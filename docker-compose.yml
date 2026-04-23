@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hippoject-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hippoject}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hippoject}
+      POSTGRES_DB: ${POSTGRES_DB:-hippoject}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-hippoject} -d ${POSTGRES_DB:-hippoject}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: hippoject-keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-hippoject}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-hippoject}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - '${KEYCLOAK_PORT:-8081}:8080'
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

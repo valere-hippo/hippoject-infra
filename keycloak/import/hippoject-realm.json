@@ -1,0 +1,80 @@
+{
+  "realm": "hippoject",
+  "enabled": true,
+  "displayName": "Hippoject",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "clients": [
+    {
+      "clientId": "hippoject-frontend",
+      "name": "Hippoject Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "hippoject-backend",
+      "name": "Hippoject Backend",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "bearerOnly": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "hippoject-admin"
+      },
+      {
+        "name": "project-admin"
+      },
+      {
+        "name": "project-manager"
+      },
+      {
+        "name": "developer"
+      },
+      {
+        "name": "reporter"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Hippoject",
+      "lastName": "Admin",
+      "email": "admin@hippoject.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "hippoject-admin",
+        "project-admin",
+        "project-manager",
+        "developer",
+        "reporter"
+      ]
+    }
+  ]
+}

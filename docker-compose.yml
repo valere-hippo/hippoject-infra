@@ -38,5 +38,29 @@ services:
       postgres:
         condition: service_healthy
 
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: hippoject-keycloak-init
+    entrypoint:
+      - /bin/bash
+      - /opt/keycloak-config/configure-realm.sh
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-hippoject}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${EMAIL:-}
+      SMTP_USERNAME: ${EMAIL:-}
+      SMTP_PASSWORD: ${PASSWORD:-}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:4200}
+    volumes:
+      - ./keycloak/scripts:/opt/keycloak-config:ro
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: 'no'
+
 volumes:
   postgres_data:

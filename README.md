@@ -27,6 +27,8 @@ cp .env.example .env
 
 ## Production architecture
 
+Target platform now includes **Hetzner Cloud CPX62** as the recommended first production host.
+
 This repo ships a single-host production stack in `compose.production.yml` with:
 
 - `https://hippoject.<domain>` → frontend
@@ -96,8 +98,13 @@ Main variables:
 
 Directory: `terraform/`
 
-Current scope:
+Current scope for the **Hetzner Cloud CPX62** path:
 
+- creates the Hetzner Cloud server
+- creates and attaches a firewall
+- creates and attaches a persistent volume
+- imports the bootstrap SSH public key into Hetzner Cloud
+- bootstraps the VM with cloud-init
 - creates the Hetzner DNS zone
 - creates A records for:
   - `auth.<domain>`
@@ -111,7 +118,14 @@ cd terraform
 cp terraform.tfvars.example terraform.tfvars
 terraform init
 terraform apply
+terraform output server_ipv4
 ```
+
+Useful outputs:
+
+- `server_ipv4`
+- `ansible_inventory_entry`
+- `ssh_command`
 
 ## Ansible
 
@@ -140,6 +154,8 @@ cp group_vars/all.example.yml group_vars/all.yml
 ansible-playbook -i inventory/production.ini playbooks/bootstrap.yml
 ```
 
+There is also a short helper note in `ansible/README.md`.
+
 ## DNS required
 
 Point these records to the server IP:
@@ -148,15 +164,18 @@ Point these records to the server IP:
 - `hippoject-api.<domain>`
 - `auth.<domain>`
 
-## Important note about Hetzner AX41-NVME
+## CPX62 recommendation
 
-An AX41-NVME is a **Hetzner dedicated server**, not a Hetzner Cloud VM.
+A **CPX62** is a Hetzner Cloud VM, so it fits this repo very well.
 
 That means:
 
-- Terraform here covers **DNS**
-- Ansible covers **server bootstrap**
-- ordering the dedicated server itself still happens manually in Hetzner
+- Terraform can provision the VM itself
+- Terraform can also wire DNS and base firewalling
+- Ansible can bootstrap the host after provisioning
+- GitHub Actions self-hosted runner can live on the same machine for the first deployment stage
+
+If you later move to multiple hosts, this repo can still be split by role, but CPX62 is a very solid first step.
 
 ## Release / handoff
 

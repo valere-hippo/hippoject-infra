@@ -2,5 +2,8 @@
 .env.production
 ansible/inventory/production.ini
 ansible/group_vars/all.yml
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
 terraform/terraform.tfvars
 traefik/letsencrypt/acme.json

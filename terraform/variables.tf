@@ -1,7 +1,19 @@
+variable "hcloud_token" {
+  description = "Hetzner Cloud API token"
+  type        = string
+  sensitive   = true
+}
+
 variable "hetznerdns_token" {
   description = "Hetzner DNS API token"
   type        = string
   sensitive   = true
+}
+
+variable "project_name" {
+  description = "Short project prefix used in resource names"
+  type        = string
+  default     = "hippoject"
 }
 
 variable "root_domain" {
@@ -10,9 +22,57 @@ variable "root_domain" {
   default     = "hippocloud.de"
 }
 
-variable "server_ipv4" {
-  description = "Public IPv4 of the Hippoject server"
+variable "server_type" {
+  description = "Hetzner Cloud server type"
   type        = string
+  default     = "cpx62"
+}
+
+variable "server_image" {
+  description = "Hetzner Cloud image"
+  type        = string
+  default     = "ubuntu-24.04"
+}
+
+variable "server_location" {
+  description = "Hetzner Cloud location"
+  type        = string
+  default     = "fsn1"
+}
+
+variable "volume_size_gb" {
+  description = "Attached persistent volume size in GB"
+  type        = number
+  default     = 80
+}
+
+variable "enable_backups" {
+  description = "Enable Hetzner Cloud backups"
+  type        = bool
+  default     = true
+}
+
+variable "ssh_key_name" {
+  description = "Name for the bootstrap SSH key in Hetzner Cloud"
+  type        = string
+  default     = "hippoject-bootstrap"
+}
+
+variable "ssh_public_key" {
+  description = "Public SSH key content used for initial bootstrap access"
+  type        = string
+}
+
+variable "admin_ipv4_cidrs" {
+  description = "IPv4 CIDRs allowed to reach SSH"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "admin_ipv6_cidrs" {
+  description = "IPv6 CIDRs allowed to reach SSH"
+  type        = list(string)
+  default     = ["::/0"]
 }
 
 variable "default_ttl" {

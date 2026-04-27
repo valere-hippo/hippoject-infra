@@ -1,3 +1,13 @@
-hetznerdns_token = "replace-me"
-root_domain      = "hippocloud.de"
-server_ipv4      = "203.0.113.10"
+hcloud_token      = "replace-me"
+hetznerdns_token  = "replace-me"
+project_name      = "hippoject"
+root_domain       = "hippocloud.de"
+server_type       = "cpx62"
+server_image      = "ubuntu-24.04"
+server_location   = "fsn1"
+volume_size_gb    = 80
+enable_backups    = true
+ssh_key_name      = "hippoject-bootstrap"
+ssh_public_key    = "ssh-ed25519 AAAA... replace-me"
+admin_ipv4_cidrs  = ["0.0.0.0/0"]
+admin_ipv6_cidrs  = ["::/0"]

@@ -1,0 +1,3 @@
+hetznerdns_token = "replace-me"
+root_domain      = "hippocloud.de"
+server_ipv4      = "203.0.113.10"

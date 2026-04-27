@@ -1,0 +1,8 @@
+- name: Bootstrap Hippoject host
+  hosts: hippoject
+  become: true
+  roles:
+    - common
+    - docker
+    - github_runner
+    - hippoject

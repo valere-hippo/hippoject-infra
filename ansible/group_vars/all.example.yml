@@ -1,0 +1,26 @@
+hippoject_root: /opt/hippoject-infra
+hippoject_timezone: UTC
+hippoject_domain: hippocloud.de
+hippoject_acme_email: v.youbi@hipposideros.de
+hippoject_postgres_user: hippoject
+hippoject_postgres_password: change-me
+hippoject_postgres_db: hippoject
+hippoject_keycloak_realm: hippoject
+hippoject_keycloak_admin: admin
+hippoject_keycloak_admin_password: change-me
+hippoject_email_notifications_enabled: false
+hippoject_smtp_server: ""
+hippoject_smtp_port: 587
+hippoject_email: ""
+hippoject_email_password: ""
+
+hippoject_ghcr_username: valere-hippo
+hippoject_ghcr_token: change-me
+
+github_owner: valere-hippo
+github_infra_repo: hippoject-infra
+github_runner_repo: hippoject-infra
+github_pat: change-me
+github_runner_version: 2.325.0
+github_runner_name: hippoject-prod
+github_runner_labels: hippoject-prod

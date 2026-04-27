@@ -6,5 +6,6 @@ mkdir -p traefik/letsencrypt
 cp -n .env.production.example .env.production 2>/dev/null || true
 touch traefik/letsencrypt/acme.json
 chmod 600 traefik/letsencrypt/acme.json
+./scripts/ghcr-login.sh
 
 docker compose --env-file .env.production -f compose.production.yml up -d

@@ -1,0 +1,37 @@
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - git
+      - gnupg
+      - jq
+      - lsb-release
+      - rsync
+      - ufw
+    state: present
+
+- name: Set timezone
+  ansible.builtin.command: timedatectl set-timezone {{ hippoject_timezone }}
+  changed_when: false
+
+- name: Allow SSH in UFW
+  ansible.builtin.command: ufw allow 22/tcp
+  changed_when: false
+
+- name: Allow HTTP in UFW
+  ansible.builtin.command: ufw allow 80/tcp
+  changed_when: false
+
+- name: Allow HTTPS in UFW
+  ansible.builtin.command: ufw allow 443/tcp
+  changed_when: false
+
+- name: Enable UFW
+  ansible.builtin.command: ufw --force enable
+  changed_when: false

@@ -1,58 +1,14 @@
 # Hippoject
 
-Hippoject is a Jira-inspired project management platform built with **Spring Boot**, **Angular**, **PostgreSQL**, and **Keycloak**.
-It already covers the core end-to-end workflows teams need to plan, track, and collaborate on delivery work, including projects, issues, epics, sprints, notifications, archive/restore flows, and realtime updates.
+Hippoject is a Jira-inspired project management platform built with **Spring Boot**, **Angular**, **PostgreSQL**, **Keycloak** and now a production deployment stack around **Traefik**, **Terraform**, **Ansible** and **GitHub Actions self-hosted runners**.
 
-## Why Hippoject?
-
-Hippoject was built to be more than a UI prototype.
-The goal was to create a working product foundation with real backend flows, real persistence, authentication, team roles, and live behavior across the application.
-
-## Core Features
-
-- **Projects** with archive and restore flows
-- **Issues** with priorities, labels, types, assignees, comments, and archive/restore
-- **Epics** with child issue progress tracking
-- **Sprints** with planning, lifecycle actions, backlog assignment, and restore flow
-- **Kanban board** with drag-and-drop and mobile-friendly quick move controls
-- **Issue navigator** with saved filters and archived issue view
-- **Role-based collaboration** with Keycloak integration
-- **Project members** and workspace directory
-- **Notification inbox** plus SMTP-backed email notifications
-- **Project activity feed** and persisted audit history
-- **Realtime updates** over WebSocket
-- **PostgreSQL + Flyway** persistence and schema migrations
-
-## Tech Stack
-
-### Backend
-- Java 21
-- Spring Boot
-- Spring Security
-- Flyway
-- PostgreSQL
-- WebSocket realtime
-
-### Frontend
-- Angular
-- TypeScript
-- standalone component-based SPA
-
-### Auth / Infra
-- Keycloak
-- Docker Compose
-- PostgreSQL 16
-- Traefik
-
-## Repository Structure
-
-This project is split into three repos:
+## Repositories
 
 - `hippoject-backend` → Spring Boot API
 - `hippoject-frontend` → Angular application
-- `hippoject-infra` → local infrastructure, setup, and release helpers
+- `hippoject-infra` → infra, compose, bootstrap and deployment automation
 
-## Local Development
+## Local development
 
 ### 1. Start infrastructure
 
@@ -69,102 +25,122 @@ cp .env.example .env
 - Backend WebSocket: `ws://localhost:8080/ws/realtime`
 - Frontend: `http://localhost:4200`
 
-### 3. Run backend
+## Production architecture
 
-In `hippoject-backend`:
+This repo ships a single-host production stack in `compose.production.yml` with:
 
-```bash
-./mvnw spring-boot:run
-```
+- `https://hippoject.<domain>` → frontend
+- `https://hippoject-api.<domain>` → backend
+- `https://auth.<domain>` → Keycloak
+- Traefik for reverse proxy and TLS
+- PostgreSQL for persistence
 
-### 4. Run frontend
+## Token-based deployment model
 
-In `hippoject-frontend`:
+Deployment is prepared to work **without SSH deploy keys**.
 
-```bash
-npm install --include=dev
-npm start
-```
+### How it works
 
-## Authentication
+- backend and frontend repos build Docker images and push them to **GHCR**
+- deployment runs on a **self-hosted GitHub Actions runner** installed on the target server
+- the runner performs local `docker compose pull` and `docker compose up -d`
+- image pulls use **GHCR credentials** stored as GitHub secrets or in `.env.production`
 
-Hippoject is designed for Keycloak-backed authentication and role-based access.
-For local development, the frontend and backend can be wired to the included local Keycloak realm.
+### GitHub secrets expected in app repos
 
-Important backend auth variables:
+For `hippoject-backend` and `hippoject-frontend`:
 
-- `SECURITY_ENABLED`
-- `JWT_JWK_SET_URI`
+- `DEPLOY_PATH`
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
 
-Important frontend auth variables:
+Recommended token scope for `GHCR_TOKEN`:
 
-- Keycloak `url`
-- Keycloak `realm`
-- Keycloak `clientId`
+- `read:packages` for pull
+- `write:packages` if you also want to reuse it for manual image publishing
 
-## Email Notifications
+### GitHub secrets expected in infra repo
 
-Hippoject can send SMTP-backed email notifications for important events such as mentions, assignments, and sprint changes.
+For `hippoject-infra`:
 
-Configure via environment variables:
+- `DEPLOY_PATH`
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
 
-- `EMAIL_NOTIFICATIONS_ENABLED=true`
-- `SMTP_SERVER=smtp.gmail.com`
-- `SMTP_PORT=587`
-- `EMAIL=...`
-- `PASSWORD=...`
-
-## Realtime Behavior
-
-The application uses **WebSocket-based realtime updates** to keep the UI fresh without depending on constant polling.
-This includes live refresh behavior for project activity and notifications, with heartbeat/reconnect handling built into the frontend.
-
-## Demo Flow
-
-A good Hippoject demo flow is:
-
-1. Create a project
-2. Add project members
-3. Create a sprint
-4. Create an epic and child issues
-5. Move issues across the board
-6. Add a comment with a mention
-7. Show live notifications
-8. Archive and restore an issue, sprint, or project
-
-## Production deployment
-
-This repo now includes `compose.production.yml` for a Traefik-based deployment with:
-
-- `https://hippoject.<domain>` for the frontend
-- `https://hippoject-api.<domain>` for the backend
-- `https://auth.<domain>` for Keycloak
-
-### 1. Prepare the server
-
-On the server:
+## Manual production startup
 
 ```bash
-git clone <repo-url> /opt/hippoject-infra
-cd /opt/hippoject-infra
 cp .env.production.example .env.production
-```
-
-Fill `.env.production` with real secrets.
-
-### 2. Start production stack
-
-```bash
 ./scripts/prod-up.sh
 ```
 
-### 3. Update containers after new images are pushed
+To refresh after new images are published:
 
 ```bash
 ./scripts/prod-pull.sh
 ```
 
-### 4. Required DNS
+## `.env.production`
+
+Main variables:
+
+- `ROOT_DOMAIN`
+- `ACME_EMAIL`
+- `POSTGRES_PASSWORD`
+- `KEYCLOAK_ADMIN_PASSWORD`
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
+- optional SMTP variables
+
+## Terraform
+
+Directory: `terraform/`
+
+Current scope:
+
+- creates the Hetzner DNS zone
+- creates A records for:
+  - `auth.<domain>`
+  - `hippoject.<domain>`
+  - `hippoject-api.<domain>`
+
+Example:
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform apply
+```
+
+## Ansible
+
+Directory: `ansible/`
+
+Current scope:
+
+- installs base packages
+- installs Docker and Docker Compose plugin
+- installs a **self-hosted GitHub Actions runner**
+- clones or updates `hippoject-infra` on the server using a **GitHub token**
+- renders `.env.production`
+- starts the production stack
+
+Recommended permissions for `github_pat` used by Ansible:
+
+- repository read access to `hippoject-infra`
+- permission to create repository runner registration tokens
+
+Example:
+
+```bash
+cd ansible
+cp inventory/production.ini.example inventory/production.ini
+cp group_vars/all.example.yml group_vars/all.yml
+ansible-playbook -i inventory/production.ini playbooks/bootstrap.yml
+```
+
+## DNS required
 
 Point these records to the server IP:
 
@@ -172,28 +148,18 @@ Point these records to the server IP:
 - `hippoject-api.<domain>`
 - `auth.<domain>`
 
-### 5. Required environment variables
+## Important note about Hetzner AX41-NVME
 
-- `ROOT_DOMAIN`
-- `ACME_EMAIL`
-- `POSTGRES_PASSWORD`
-- `KEYCLOAK_ADMIN_PASSWORD`
-- optional SMTP variables for email notifications
+An AX41-NVME is a **Hetzner dedicated server**, not a Hetzner Cloud VM.
 
-## Release / Handoff
+That means:
+
+- Terraform here covers **DNS**
+- Ansible covers **server bootstrap**
+- ordering the dedicated server itself still happens manually in Hetzner
+
+## Release / handoff
 
 For a final verification pass, see:
 
 - `RELEASE_CHECKLIST.md`
-
-## Current State
-
-Hippoject is already in a strong state for:
-
-- demos
-- portfolio presentation
-- internal showcase
-- further product expansion
-- first production deployment on a single host with Traefik and Docker Compose
-
-It is not just a static concept, but a working foundation for a modern Jira-like delivery platform.

@@ -1,0 +1,47 @@
+- name: Ensure deployment root exists
+  ansible.builtin.file:
+    path: "{{ hippoject_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Clone or update hippoject-infra repository
+  ansible.builtin.git:
+    repo: "https://{{ github_pat }}@github.com/{{ github_owner }}/{{ github_infra_repo }}.git"
+    dest: "{{ hippoject_root }}"
+    version: main
+    update: true
+    force: true
+  no_log: true
+
+- name: Create Traefik directory
+  ansible.builtin.file:
+    path: "{{ hippoject_root }}/traefik/letsencrypt"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create ACME storage file
+  ansible.builtin.file:
+    path: "{{ hippoject_root }}/traefik/letsencrypt/acme.json"
+    state: touch
+    mode: "0600"
+
+- name: Render production environment
+  ansible.builtin.template:
+    src: env.production.j2
+    dest: "{{ hippoject_root }}/.env.production"
+    mode: "0600"
+
+- name: Log in to GHCR
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "{{ hippoject_ghcr_token }}" | docker login ghcr.io -u "{{ hippoject_ghcr_username }}" --password-stdin
+  no_log: true
+
+- name: Start Hippoject production stack
+  ansible.builtin.command:
+    cmd: ./scripts/prod-up.sh
+    chdir: "{{ hippoject_root }}"

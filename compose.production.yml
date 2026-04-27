@@ -1,0 +1,169 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: hippoject-traefik
+    restart: unless-stopped
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    networks:
+      - edge
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hippoject-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hippoject}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-hippoject}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-hippoject} -d ${POSTGRES_DB:-hippoject}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: hippoject-keycloak
+    restart: unless-stopped
+    command:
+      - start
+      - --http-enabled=true
+      - --proxy-headers=xforwarded
+      - --hostname=auth.${ROOT_DOMAIN}
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-hippoject}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hippoject-auth.rule=Host(`auth.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hippoject-auth.entrypoints=websecure
+      - traefik.http.routers.hippoject-auth.tls.certresolver=letsencrypt
+      - traefik.http.services.hippoject-auth.loadbalancer.server.port=8080
+    networks:
+      - internal
+      - edge
+
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: hippoject-keycloak-init
+    entrypoint:
+      - /bin/bash
+      - /opt/keycloak-config/configure-realm.sh
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-hippoject}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${EMAIL:-}
+      SMTP_USERNAME: ${EMAIL:-}
+      SMTP_PASSWORD: ${PASSWORD:-}
+      APP_FRONTEND_URL: https://hippoject.${ROOT_DOMAIN}
+    volumes:
+      - ./keycloak/scripts:/opt/keycloak-config:ro
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: 'no'
+    networks:
+      - internal
+
+  backend:
+    image: ghcr.io/valere-hippo/hippoject-backend:latest
+    container_name: hippoject-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/hippoject
+      DATABASE_USERNAME: ${POSTGRES_USER:-hippoject}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      SECURITY_ENABLED: 'true'
+      JWT_JWK_SET_URI: https://auth.${ROOT_DOMAIN}/realms/hippoject/protocol/openid-connect/certs
+      KEYCLOAK_URL: https://auth.${ROOT_DOMAIN}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-hippoject}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      APP_FRONTEND_URL: https://hippoject.${ROOT_DOMAIN}
+      CORS_ALLOWED_ORIGIN_PATTERNS: https://hippoject.${ROOT_DOMAIN}
+      EMAIL_NOTIFICATIONS_ENABLED: ${EMAIL_NOTIFICATIONS_ENABLED:-false}
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      EMAIL: ${EMAIL:-}
+      PASSWORD: ${PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      keycloak-init:
+        condition: service_completed_successfully
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hippoject-api.rule=Host(`hippoject-api.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hippoject-api.entrypoints=websecure
+      - traefik.http.routers.hippoject-api.tls.certresolver=letsencrypt
+      - traefik.http.services.hippoject-api.loadbalancer.server.port=8080
+    networks:
+      - internal
+      - edge
+
+  frontend:
+    image: ghcr.io/valere-hippo/hippoject-frontend:latest
+    container_name: hippoject-frontend
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: https://hippoject-api.${ROOT_DOMAIN}/api
+      AUTH_ENABLED: 'true'
+      KEYCLOAK_URL: https://auth.${ROOT_DOMAIN}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-hippoject}
+      KEYCLOAK_CLIENT_ID: hippoject-frontend
+    depends_on:
+      backend:
+        condition: service_started
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hippoject-frontend.rule=Host(`hippoject.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hippoject-frontend.entrypoints=websecure
+      - traefik.http.routers.hippoject-frontend.tls.certresolver=letsencrypt
+      - traefik.http.services.hippoject-frontend.loadbalancer.server.port=80
+    networks:
+      - edge
+
+volumes:
+  postgres_data:
+
+networks:
+  edge:
+    name: hippoject-edge
+  internal:
+    name: hippoject-internal

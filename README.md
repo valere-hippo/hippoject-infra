@@ -42,6 +42,7 @@ The goal was to create a working product foundation with real backend flows, rea
 - Keycloak
 - Docker Compose
 - PostgreSQL 16
+- Traefik
 
 ## Repository Structure
 
@@ -131,6 +132,54 @@ A good Hippoject demo flow is:
 7. Show live notifications
 8. Archive and restore an issue, sprint, or project
 
+## Production deployment
+
+This repo now includes `compose.production.yml` for a Traefik-based deployment with:
+
+- `https://hippoject.<domain>` for the frontend
+- `https://hippoject-api.<domain>` for the backend
+- `https://auth.<domain>` for Keycloak
+
+### 1. Prepare the server
+
+On the server:
+
+```bash
+git clone <repo-url> /opt/hippoject-infra
+cd /opt/hippoject-infra
+cp .env.production.example .env.production
+```
+
+Fill `.env.production` with real secrets.
+
+### 2. Start production stack
+
+```bash
+./scripts/prod-up.sh
+```
+
+### 3. Update containers after new images are pushed
+
+```bash
+./scripts/prod-pull.sh
+```
+
+### 4. Required DNS
+
+Point these records to the server IP:
+
+- `hippoject.<domain>`
+- `hippoject-api.<domain>`
+- `auth.<domain>`
+
+### 5. Required environment variables
+
+- `ROOT_DOMAIN`
+- `ACME_EMAIL`
+- `POSTGRES_PASSWORD`
+- `KEYCLOAK_ADMIN_PASSWORD`
+- optional SMTP variables for email notifications
+
 ## Release / Handoff
 
 For a final verification pass, see:
@@ -145,5 +194,6 @@ Hippoject is already in a strong state for:
 - portfolio presentation
 - internal showcase
 - further product expansion
+- first production deployment on a single host with Traefik and Docker Compose
 
 It is not just a static concept, but a working foundation for a modern Jira-like delivery platform.

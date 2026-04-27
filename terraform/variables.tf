@@ -4,10 +4,21 @@ variable "hcloud_token" {
   sensitive   = true
 }
 
-variable "hetznerdns_token" {
-  description = "Hetzner DNS API token"
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with DNS edit access"
   type        = string
   sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the root domain"
+  type        = string
+}
+
+variable "cloudflare_proxied" {
+  description = "Whether Cloudflare should proxy the public DNS records"
+  type        = bool
+  default     = false
 }
 
 variable "project_name" {

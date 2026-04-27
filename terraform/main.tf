@@ -101,19 +101,15 @@ resource "hcloud_volume" "hippoject" {
   }
 }
 
-resource "hetznerdns_zone" "root" {
-  name = var.root_domain
-  ttl  = var.default_ttl
-}
-
-resource "hetznerdns_record" "a_records" {
+resource "cloudflare_dns_record" "a_records" {
   for_each = local.dns_records
 
-  zone_id = hetznerdns_zone.root.id
+  zone_id = var.cloudflare_zone_id
   name    = each.value.name
-  value   = each.value.value
   type    = "A"
   ttl     = var.default_ttl
+  content = each.value.value
+  proxied = var.cloudflare_proxied
 }
 
 output "server_name" {

@@ -105,11 +105,16 @@ Current scope for the **Hetzner Cloud CPX62** path:
 - creates and attaches a persistent volume
 - imports the bootstrap SSH public key into Hetzner Cloud
 - bootstraps the VM with cloud-init
-- creates the Hetzner DNS zone
-- creates A records for:
+- creates Cloudflare DNS A records for:
   - `auth.<domain>`
   - `hippoject.<domain>`
   - `hippoject-api.<domain>`
+
+Required Terraform secrets/IDs now include:
+
+- `hcloud_token`
+- `cloudflare_api_token`
+- `cloudflare_zone_id`
 
 Example:
 
@@ -158,7 +163,9 @@ There is also a short helper note in `ansible/README.md`.
 
 ## DNS required
 
-Point these records to the server IP:
+Cloudflare should host the DNS zone for the domain.
+
+Terraform will manage these A records in Cloudflare:
 
 - `hippoject.<domain>`
 - `hippoject-api.<domain>`

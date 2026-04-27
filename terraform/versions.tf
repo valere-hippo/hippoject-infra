@@ -7,9 +7,9 @@ terraform {
       version = ">= 1.49.1"
     }
 
-    hetznerdns = {
-      source  = "timohirt/hetznerdns"
-      version = ">= 2.1.0"
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = ">= 5.8.2"
     }
   }
 }
@@ -18,6 +18,6 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
-provider "hetznerdns" {
-  apitoken = var.hetznerdns_token
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }

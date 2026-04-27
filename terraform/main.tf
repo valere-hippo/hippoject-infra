@@ -90,7 +90,6 @@ resource "hcloud_volume" "hippoject" {
   name      = "${var.project_name}-data"
   size      = var.volume_size_gb
   format    = "ext4"
-  location  = var.server_location
   server_id = hcloud_server.hippoject.id
   automount = true
 

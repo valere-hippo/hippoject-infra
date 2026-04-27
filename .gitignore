@@ -1,5 +1,6 @@
 .env
 .env.production
+DEPLOYMENT-NOTES.local.md
 ansible/inventory/production.ini
 ansible/group_vars/all.yml
 terraform/.terraform/

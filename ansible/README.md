@@ -13,11 +13,13 @@ cp group_vars/all.example.yml group_vars/all.yml
 
 4. Replace `ansible_host` in `inventory/production.ini`
 5. Fill tokens and passwords in `group_vars/all.yml`
-6. Run:
+6. Run from the `ansible/` directory:
 
 ```bash
-ansible-playbook -i inventory/production.ini playbooks/bootstrap.yml
+ansible-playbook playbooks/bootstrap.yml
 ```
+
+`ansible.cfg` in this directory sets the inventory and `roles_path` automatically.
 
 The playbook will:
 

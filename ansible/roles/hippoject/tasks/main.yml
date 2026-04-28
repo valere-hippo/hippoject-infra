@@ -39,6 +39,8 @@
   ansible.builtin.shell: |
     set -euo pipefail
     echo "{{ hippoject_ghcr_token }}" | docker login ghcr.io -u "{{ hippoject_ghcr_username }}" --password-stdin
+  args:
+    executable: /bin/bash
   no_log: true
 
 - name: Start Hippoject production stack

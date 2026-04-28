@@ -1,0 +1,54 @@
+- name: Create runner directory for {{ github_runner_item.repo }}
+  ansible.builtin.file:
+    path: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}"
+    state: directory
+    owner: github-runner
+    group: github-runner
+    mode: "0755"
+
+- name: Extract actions runner for {{ github_runner_item.repo }}
+  ansible.builtin.unarchive:
+    src: "/tmp/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    dest: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}"
+    owner: github-runner
+    group: github-runner
+    remote_src: true
+    creates: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}/config.sh"
+
+- name: Request runner registration token for {{ github_runner_item.repo }}
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_owner }}/{{ github_runner_item.repo }}/actions/runners/registration-token"
+    method: POST
+    headers:
+      Accept: application/vnd.github+json
+      Authorization: "Bearer {{ github_pat }}"
+      X-GitHub-Api-Version: "2022-11-28"
+    status_code: 201
+  register: runner_registration_token
+  no_log: true
+
+- name: Configure runner for {{ github_runner_item.repo }}
+  ansible.builtin.command:
+    cmd: >-
+      ./config.sh --url https://github.com/{{ github_owner }}/{{ github_runner_item.repo }}
+      --token {{ runner_registration_token.json.token }}
+      --name {{ github_runner_item.name }}
+      --labels {{ github_runner_item.labels }}
+      --unattended --replace
+    chdir: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}"
+    creates: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}/.runner"
+  become: true
+  become_user: github-runner
+  no_log: true
+
+- name: Install runner service for {{ github_runner_item.repo }}
+  ansible.builtin.command:
+    cmd: ./svc.sh install github-runner
+    chdir: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}"
+    creates: "/etc/systemd/system/actions.runner.{{ github_owner }}-{{ github_runner_item.repo }}.{{ github_runner_item.name }}.service"
+
+- name: Start runner service for {{ github_runner_item.repo }}
+  ansible.builtin.command:
+    cmd: ./svc.sh start
+    chdir: "{{ github_runner_item.directory | default('/opt/actions-runners/' ~ github_runner_item.repo) }}"
+  changed_when: false

@@ -2,9 +2,17 @@
   ansible.builtin.file:
     path: "{{ hippoject_root }}"
     state: directory
-    owner: root
-    group: root
+    owner: github-runner
+    group: github-runner
     mode: "0755"
+
+- name: Ensure deployment root ownership for runner
+  ansible.builtin.file:
+    path: "{{ hippoject_root }}"
+    state: directory
+    owner: github-runner
+    group: github-runner
+    recurse: true
 
 - name: Clone or update hippoject-infra repository
   ansible.builtin.git:
@@ -13,26 +21,40 @@
     version: main
     update: true
     force: true
+  become: true
+  become_user: github-runner
   no_log: true
+
+- name: Ensure deployment root ownership for runner after sync
+  ansible.builtin.file:
+    path: "{{ hippoject_root }}"
+    state: directory
+    owner: github-runner
+    group: github-runner
+    recurse: true
 
 - name: Create Traefik directory
   ansible.builtin.file:
     path: "{{ hippoject_root }}/traefik/letsencrypt"
     state: directory
-    owner: root
-    group: root
+    owner: github-runner
+    group: github-runner
     mode: "0755"
 
 - name: Create ACME storage file
   ansible.builtin.file:
     path: "{{ hippoject_root }}/traefik/letsencrypt/acme.json"
     state: touch
+    owner: github-runner
+    group: github-runner
     mode: "0600"
 
 - name: Render production environment
   ansible.builtin.template:
     src: env.production.j2
     dest: "{{ hippoject_root }}/.env.production"
+    owner: github-runner
+    group: github-runner
     mode: "0600"
 
 - name: Log in to GHCR
@@ -41,9 +63,13 @@
     echo "{{ hippoject_ghcr_token }}" | docker login ghcr.io -u "{{ hippoject_ghcr_username }}" --password-stdin
   args:
     executable: /bin/bash
+  become: true
+  become_user: github-runner
   no_log: true
 
 - name: Start Hippoject production stack
   ansible.builtin.command:
     cmd: ./scripts/prod-up.sh
     chdir: "{{ hippoject_root }}"
+  become: true
+  become_user: github-runner

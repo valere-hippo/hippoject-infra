@@ -20,7 +20,12 @@ jobs:
       - name: Sync repo to deploy path
         run: |
           mkdir -p "${{ secrets.DEPLOY_PATH }}"
-          rsync -a --delete             --exclude='.git/'             --exclude='.github/'             ./ "${{ secrets.DEPLOY_PATH }}/"
+          rsync -rlptD --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env.production' \
+            --exclude='traefik/letsencrypt/acme.json' \
+            ./ "${{ secrets.DEPLOY_PATH }}/"
 
       - name: Log in to GHCR for pull
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin

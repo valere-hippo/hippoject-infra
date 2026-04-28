@@ -19,8 +19,18 @@ hippoject_ghcr_token: change-me
 
 github_owner: valere-hippo
 github_infra_repo: hippoject-infra
-github_runner_repo: hippoject-infra
 github_pat: change-me
 github_runner_version: 2.325.0
-github_runner_name: hippoject-prod
-github_runner_labels: hippoject-prod
+github_runners:
+  - repo: hippoject-infra
+    name: hippoject-prod
+    labels: hippoject-prod
+    directory: /opt/actions-runner
+  - repo: hippoject-backend
+    name: hippoject-prod-backend
+    labels: hippoject-prod
+    directory: /opt/actions-runner-backend
+  - repo: hippoject-frontend
+    name: hippoject-prod-frontend
+    labels: hippoject-prod
+    directory: /opt/actions-runner-frontend

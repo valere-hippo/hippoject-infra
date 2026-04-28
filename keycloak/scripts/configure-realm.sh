@@ -9,6 +9,7 @@ KEYCLOAK_FRONTEND_CLIENT_ID="${KEYCLOAK_FRONTEND_CLIENT_ID:-hippoject-frontend}"
 SMTP_PORT="${SMTP_PORT:-587}"
 SMTP_USERNAME="${SMTP_USERNAME:-${SMTP_FROM:-}}"
 APP_FRONTEND_URL="${APP_FRONTEND_URL:-http://localhost:4200}"
+KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-$KEYCLOAK_URL}"
 
 until /opt/keycloak/bin/kcadm.sh config credentials \
   --server "$KEYCLOAK_URL" \
@@ -24,7 +25,7 @@ done
   -s "loginWithEmailAllowed=true" \
   -s "resetPasswordAllowed=true" \
   -s "verifyEmail=true" \
-  -s "attributes.frontendUrl=$APP_FRONTEND_URL"
+  -s "attributes.frontendUrl=$KEYCLOAK_PUBLIC_URL"
 
 frontend_client_uuid="$({ /opt/keycloak/bin/kcadm.sh get clients -r "$KEYCLOAK_REALM" -q clientId="$KEYCLOAK_FRONTEND_CLIENT_ID" --fields id,clientId 2>/dev/null || true; } | tr -d '\n' | sed -E 's/.*"id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
 

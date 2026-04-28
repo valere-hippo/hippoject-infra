@@ -93,6 +93,7 @@ services:
       SMTP_USERNAME: ${EMAIL:-}
       SMTP_PASSWORD: ${PASSWORD:-}
       APP_FRONTEND_URL: https://hippoject.${ROOT_DOMAIN}
+      KEYCLOAK_PUBLIC_URL: https://auth.${ROOT_DOMAIN}
     volumes:
       - ./keycloak/scripts:/opt/keycloak-config:ro
     depends_on:

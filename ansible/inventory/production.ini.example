@@ -1,2 +1,2 @@
 [hippoject]
-hippoject-prod ansible_host=203.0.113.10 ansible_user=root
+hippoject-prod ansible_host=203.0.113.10 ansible_user=ansible ansible_python_interpreter=/usr/bin/python3

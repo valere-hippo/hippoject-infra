@@ -67,6 +67,7 @@ services:
         condition: service_healthy
     labels:
       - traefik.enable=true
+      - traefik.docker.network=hippoject-edge
       - traefik.http.routers.hippoject-auth.rule=Host(`auth.${ROOT_DOMAIN}`)
       - traefik.http.routers.hippoject-auth.entrypoints=websecure
       - traefik.http.routers.hippoject-auth.tls.certresolver=letsencrypt
@@ -131,6 +132,7 @@ services:
         condition: service_completed_successfully
     labels:
       - traefik.enable=true
+      - traefik.docker.network=hippoject-edge
       - traefik.http.routers.hippoject-api.rule=Host(`hippoject-api.${ROOT_DOMAIN}`)
       - traefik.http.routers.hippoject-api.entrypoints=websecure
       - traefik.http.routers.hippoject-api.tls.certresolver=letsencrypt
@@ -154,6 +156,7 @@ services:
         condition: service_started
     labels:
       - traefik.enable=true
+      - traefik.docker.network=hippoject-edge
       - traefik.http.routers.hippoject-frontend.rule=Host(`hippoject.${ROOT_DOMAIN}`)
       - traefik.http.routers.hippoject-frontend.entrypoints=websecure
       - traefik.http.routers.hippoject-frontend.tls.certresolver=letsencrypt

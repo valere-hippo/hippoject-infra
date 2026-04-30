@@ -184,6 +184,16 @@ That means:
 
 If you later move to multiple hosts, this repo can still be split by role, but CPX62 is a very solid first step.
 
+## Operations
+
+For day-2 operations, logs, database access, Keycloak admin access, restarts, and rotation guidance, see:
+
+- `PRODUCTION_RUNBOOK.md`
+
+A minimal uptime monitoring starter is also included here:
+
+- `monitoring/uptime-kuma.compose.yml`
+
 ## Release / handoff
 
 For a final verification pass, see:

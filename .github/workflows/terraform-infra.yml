@@ -96,10 +96,10 @@ jobs:
           mkdir -p "$INSTALL_DIR"
           curl -fsSL "https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
           python3 - <<'PY'
-import zipfile
-zf = zipfile.ZipFile('/tmp/terraform.zip')
-zf.extractall('/tmp/terraform-bin')
-PY
+          import zipfile
+          zf = zipfile.ZipFile('/tmp/terraform.zip')
+          zf.extractall('/tmp/terraform-bin')
+          PY
           install -m 0755 /tmp/terraform-bin/terraform "$INSTALL_DIR/terraform"
           echo "$INSTALL_DIR" >> "$GITHUB_PATH"
           "$INSTALL_DIR/terraform" version

@@ -152,6 +152,20 @@ jobs:
       - name: Terraform plan
         run: terraform plan -out=tfplan
 
+      - name: Block unsafe apply when state is missing
+        if: ${{ inputs.mode == 'apply' }}
+        run: |
+          set -euo pipefail
+          terraform show -no-color tfplan > /tmp/tfplan.txt
+          if grep -Fq '# hcloud_server.hippoject will be created' /tmp/tfplan.txt; then
+            echo 'Refusing apply because Terraform would create the production server, which indicates missing state import.' >&2
+            exit 1
+          fi
+          if grep -Fq '# hcloud_volume.hippoject will be created' /tmp/tfplan.txt; then
+            echo 'Warning: Terraform would create the production volume. Import existing resources before apply.' >&2
+            exit 1
+          fi
+
       - name: Terraform apply
         if: ${{ inputs.mode == 'apply' }}
         run: terraform apply -auto-approve tfplan

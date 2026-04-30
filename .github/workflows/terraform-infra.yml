@@ -83,6 +83,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure unzip is available
+        run: |
+          if command -v unzip >/dev/null 2>&1; then
+            exit 0
+          fi
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 

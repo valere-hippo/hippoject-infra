@@ -7,6 +7,7 @@ This file is the operational handoff for the single-host production deployment.
 - Frontend: `https://hippoject.<domain>`
 - API: `https://hippoject-api.<domain>`
 - Keycloak: `https://auth.<domain>`
+- Monitoring: `https://monitoring.<domain>`
 - Keycloak admin console: `https://auth.<domain>/admin/master/console/`
 
 ## Where the stack lives on the server
@@ -73,6 +74,32 @@ If the root URL opens but the login fails, verify that you are logging into the 
 ## Database access
 
 PostgreSQL is an internal container service. It is not expected to be reachable directly from the public internet.
+
+### Connect from IntelliJ, pgAdmin, DBeaver, or another local SQL client
+
+Use an SSH tunnel to the production host, then connect to localhost on your own machine.
+
+Example:
+
+```bash
+ssh -L 5432:127.0.0.1:5432 ansible@46.225.179.25
+```
+
+Then use this JDBC URL locally:
+
+```text
+jdbc:postgresql://127.0.0.1:5432/hippoject
+```
+
+Typical client settings:
+
+- Host: `127.0.0.1`
+- Port: `5432`
+- Database: `hippoject`
+- User: `hippoject`
+- Password: value of `POSTGRES_PASSWORD`
+
+Important: `jdbc:postgresql://46.225.179.25:5432/hippoject` will normally fail from the public internet because port `5432` is intentionally not exposed.
 
 ### Connect from the server host into the app database
 
@@ -223,6 +250,10 @@ For a simple first step, run **Uptime Kuma** on the same host and monitor:
 - `https://hippoject.<domain>`
 - `https://hippoject-api.<domain>/actuator/health`
 - `https://auth.<domain>/realms/hippoject/.well-known/openid-configuration`
+
+In the current infra repo, Uptime Kuma can be exposed directly through Traefik at:
+
+- `https://monitoring.<domain>`
 
 A starter compose file is available in `monitoring/uptime-kuma.compose.yml`.
 

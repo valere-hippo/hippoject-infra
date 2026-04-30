@@ -34,6 +34,7 @@ This repo ships a single-host production stack in `compose.production.yml` with:
 - `https://hippoject.<domain>` → frontend
 - `https://hippoject-api.<domain>` → backend
 - `https://auth.<domain>` → Keycloak
+- `https://monitoring.<domain>` → Uptime Kuma
 - Traefik for reverse proxy and TLS
 - PostgreSQL for persistence
 
@@ -171,6 +172,10 @@ Terraform will manage these A records in Cloudflare:
 - `hippoject-api.<domain>`
 - `auth.<domain>`
 
+For monitoring, also point this DNS record to the same production host:
+
+- `monitoring.<domain>`
+
 ## CPX62 recommendation
 
 A **CPX62** is a Hetzner Cloud VM, so it fits this repo very well.
@@ -193,6 +198,10 @@ For day-2 operations, logs, database access, Keycloak admin access, restarts, an
 A minimal uptime monitoring starter is also included here:
 
 - `monitoring/uptime-kuma.compose.yml`
+
+In the integrated production stack, Uptime Kuma is also exposed at:
+
+- `https://monitoring.<domain>`
 
 ## Release / handoff
 

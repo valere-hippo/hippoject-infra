@@ -35,6 +35,7 @@ This repo ships a single-host production stack in `compose.production.yml` with:
 - `https://hippoject-api.<domain>` → backend
 - `https://auth.<domain>` → Keycloak
 - `https://monitoring.<domain>` → Uptime Kuma
+- `postgres://<host>:5432` → PostgreSQL (publicly exposed if you publish port 5432)
 - Traefik for reverse proxy and TLS
 - PostgreSQL for persistence
 
@@ -175,6 +176,8 @@ Terraform will manage these A records in Cloudflare:
 For monitoring, also point this DNS record to the same production host:
 
 - `monitoring.<domain>`
+
+If you intentionally expose PostgreSQL publicly, also allow inbound `5432/tcp` on the host firewall.
 
 ## CPX62 recommendation
 

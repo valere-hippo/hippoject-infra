@@ -5,6 +5,7 @@ locals {
     auth          = { name = "auth",          value = hcloud_server.hippoject.ipv4_address }
     hippoject     = { name = "hippoject",     value = hcloud_server.hippoject.ipv4_address }
     hippoject_api = { name = "hippoject-api", value = hcloud_server.hippoject.ipv4_address }
+    monitoring    = { name = "monitoring",    value = hcloud_server.hippoject.ipv4_address }
   }
 }
 
@@ -34,6 +35,13 @@ resource "hcloud_firewall" "hippoject" {
     direction  = "in"
     protocol   = "tcp"
     port       = "443"
+    source_ips = ["0.0.0.0/0", "::/0"]
+  }
+
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "5432"
     source_ips = ["0.0.0.0/0", "::/0"]
   }
 

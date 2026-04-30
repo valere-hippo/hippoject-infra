@@ -75,6 +75,8 @@ If the root URL opens but the login fails, verify that you are logging into the 
 
 PostgreSQL is an internal container service. It is not expected to be reachable directly from the public internet.
 
+If you intentionally expose PostgreSQL publicly, publish container port `5432` and allow `5432/tcp` on the host firewall. This is higher risk and should only be done deliberately.
+
 ### Connect from IntelliJ, pgAdmin, DBeaver, or another local SQL client
 
 Use an SSH tunnel to the production host, then connect to localhost on your own machine.

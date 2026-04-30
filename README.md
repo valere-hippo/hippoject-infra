@@ -92,7 +92,7 @@ Main variables:
 - `KEYCLOAK_ADMIN_PASSWORD`
 - `GHCR_USERNAME`
 - `GHCR_TOKEN`
-- optional SMTP variables
+- SMTP variables such as `SMTP_SERVER`, `SMTP_PORT`, `EMAIL`, `PASSWORD`
 
 ## Terraform
 

@@ -34,7 +34,28 @@ sed -n '1,120p' .env.production
 Useful targeted checks:
 
 ```bash
-grep -E '^(POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|KEYCLOAK_REALM|KEYCLOAK_ADMIN|KEYCLOAK_ADMIN_PASSWORD|GHCR_USERNAME)=' .env.production
+grep -E '^(POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|KEYCLOAK_REALM|KEYCLOAK_ADMIN|KEYCLOAK_ADMIN_PASSWORD|GHCR_USERNAME|EMAIL_NOTIFICATIONS_ENABLED|SMTP_SERVER|SMTP_PORT|EMAIL)=' .env.production
+```
+
+## Mail configuration
+
+Mail is driven through `.env.production` and is already wired into both the backend and `keycloak-init`.
+
+Relevant variables:
+
+```bash
+EMAIL_NOTIFICATIONS_ENABLED=false
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+EMAIL=bat.hipposideros@gmail.com
+PASSWORD=<gmail-app-password>
+```
+
+After changing mail settings, refresh the stack:
+
+```bash
+cd /opt/hippoject-infra
+./scripts/prod-pull.sh
 ```
 
 ## Keycloak admin login
@@ -123,6 +144,46 @@ Replace `backend` with one of:
 cd /opt/hippoject-infra
 docker compose --env-file .env.production -f compose.production.yml logs --tail=300 backend keycloak traefik
 ```
+
+## Deployment pipelines
+
+### If you change `hippoject-backend`
+
+Run or let GitHub run:
+
+- workflow: `hippoject-backend-deploy`
+
+This builds the backend image, pushes it to GHCR, then the self-hosted runner pulls and restarts only `backend`.
+
+### If you change `hippoject-frontend`
+
+Run or let GitHub run:
+
+- workflow: `hippoject-frontend-deploy`
+
+This builds the frontend image, pushes it to GHCR, then the self-hosted runner pulls and restarts only `frontend`.
+
+### If you change `hippoject-infra`
+
+Run or let GitHub run:
+
+- workflow: `hippoject-infra-sync`
+
+Use the infra pipeline when you changed files such as:
+
+- `compose.production.yml`
+- scripts under `scripts/`
+- Keycloak import or config scripts
+- Ansible/bootstrap assets that must be synced to `/opt/hippoject-infra`
+- runbooks/ops files that you also want present on the server
+
+The infra pipeline syncs the repo to `DEPLOY_PATH` and runs `./scripts/prod-pull.sh`.
+
+### Practical rule
+
+- app code change only → run backend or frontend pipeline
+- infra/config/script change → run infra pipeline
+- changed app repo and infra repo → run both, usually infra first if the app depends on new infra config, otherwise app pipeline alone is enough
 
 ## Restart operations
 

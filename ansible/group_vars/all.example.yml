@@ -9,10 +9,10 @@ hippoject_keycloak_realm: hippoject
 hippoject_keycloak_admin: admin
 hippoject_keycloak_admin_password: change-me
 hippoject_email_notifications_enabled: false
-hippoject_smtp_server: ""
+hippoject_smtp_server: "smtp.gmail.com"
 hippoject_smtp_port: 587
-hippoject_email: ""
-hippoject_email_password: ""
+hippoject_email: "bat.hipposideros@gmail.com"
+hippoject_email_password: "change-me"
 
 hippoject_ghcr_username: valere-hippo
 hippoject_ghcr_token: change-me

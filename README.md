@@ -142,6 +142,8 @@ It supports `plan` and `apply` through `workflow_dispatch` and is intended to ru
 
 The workflow installs its own Terraform CLI in the runner user home, so it does not depend on system-wide `terraform`, `sudo`, or `unzip` packages.
 
+For an existing production stack, leave `import_existing_state=true` so the workflow first imports matching Hetzner and Cloudflare resources into the persistent runner state before planning. This avoids a dangerous first `apply` that would try to recreate the server.
+
 Before using it, configure these repository secrets:
 
 - `HCLOUD_TOKEN`

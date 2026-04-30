@@ -87,6 +87,14 @@ resource "hcloud_server" "hippoject" {
     service = "hippoject"
     env     = "production"
   }
+
+  lifecycle {
+    ignore_changes = [
+      image,
+      ssh_keys,
+      user_data,
+    ]
+  }
 }
 
 resource "hcloud_firewall_attachment" "hippoject" {

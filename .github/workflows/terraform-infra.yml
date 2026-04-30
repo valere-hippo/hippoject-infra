@@ -41,6 +41,11 @@ on:
         required: true
         default: '80'
         type: string
+      terraform_version:
+        description: Terraform CLI version
+        required: true
+        default: 1.9.8
+        type: string
       enable_backups:
         description: Enable Hetzner backups
         required: true
@@ -83,16 +88,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure unzip is available
+      - name: Install Terraform CLI
         run: |
-          if command -v unzip >/dev/null 2>&1; then
-            exit 0
-          fi
-          sudo apt-get update
-          sudo apt-get install -y unzip
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+          set -euo pipefail
+          VERSION='${{ inputs.terraform_version }}'
+          INSTALL_DIR="$HOME/.local/bin"
+          mkdir -p "$INSTALL_DIR"
+          curl -fsSL "https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
+          python3 - <<'PY'
+import zipfile
+zf = zipfile.ZipFile('/tmp/terraform.zip')
+zf.extractall('/tmp/terraform-bin')
+PY
+          install -m 0755 /tmp/terraform-bin/terraform "$INSTALL_DIR/terraform"
+          echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+          "$INSTALL_DIR/terraform" version
 
       - name: Restore persistent Terraform state
         run: |

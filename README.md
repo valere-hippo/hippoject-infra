@@ -140,6 +140,8 @@ This repo now includes a manual workflow:
 
 It supports `plan` and `apply` through `workflow_dispatch` and is intended to run on the same self-hosted runner family as production.
 
+The workflow installs its own Terraform CLI in the runner user home, so it does not depend on system-wide `terraform`, `sudo`, or `unzip` packages.
+
 Before using it, configure these repository secrets:
 
 - `HCLOUD_TOKEN`

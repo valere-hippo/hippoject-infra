@@ -70,6 +70,10 @@ For `hippoject-infra`:
 - `DEPLOY_PATH`
 - `GHCR_USERNAME`
 - `GHCR_TOKEN`
+- `HCLOUD_TOKEN` (for Terraform workflow)
+- `CLOUDFLARE_API_TOKEN` (for Terraform workflow)
+- `CLOUDFLARE_ZONE_ID` (for Terraform workflow)
+- `SSH_PUBLIC_KEY` (for Terraform workflow)
 
 ## Manual production startup
 
@@ -127,6 +131,29 @@ terraform init
 terraform apply
 terraform output server_ipv4
 ```
+
+## GitHub Actions Terraform workflow
+
+This repo now includes a manual workflow:
+
+- workflow: `hippoject-terraform`
+
+It supports `plan` and `apply` through `workflow_dispatch` and is intended to run on the same self-hosted runner family as production.
+
+Before using it, configure these repository secrets:
+
+- `HCLOUD_TOKEN`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ZONE_ID`
+- `SSH_PUBLIC_KEY`
+
+Recommended first use:
+
+1. Run `hippoject-terraform` with `mode=plan`
+2. Review the changes
+3. Run again with `mode=apply`
+
+The workflow stores `terraform.tfstate` persistently on the self-hosted runner under `$HOME/.terraform-state/hippoject-infra`, so repeated runs keep the same state between plans and applies.
 
 Useful outputs:
 

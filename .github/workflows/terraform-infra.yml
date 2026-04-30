@@ -1,0 +1,159 @@
+name: hippoject-terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Terraform action to run
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+      root_domain:
+        description: Public root domain
+        required: true
+        default: hipposideros-cloud.com
+        type: string
+      project_name:
+        description: Project prefix used for Terraform resources
+        required: true
+        default: hippoject
+        type: string
+      server_type:
+        description: Hetzner server type
+        required: true
+        default: cpx62
+        type: string
+      server_image:
+        description: Hetzner server image
+        required: true
+        default: ubuntu-24.04
+        type: string
+      server_location:
+        description: Hetzner location
+        required: true
+        default: nbg1
+        type: string
+      volume_size_gb:
+        description: Persistent volume size in GB
+        required: true
+        default: '80'
+        type: string
+      enable_backups:
+        description: Enable Hetzner backups
+        required: true
+        default: true
+        type: boolean
+      cloudflare_proxied:
+        description: Proxy public DNS records through Cloudflare
+        required: true
+        default: false
+        type: boolean
+      admin_ipv4_cidrs_json:
+        description: JSON array of IPv4 CIDRs allowed for SSH and any admin-only firewall rules
+        required: true
+        default: '["0.0.0.0/0"]'
+        type: string
+      admin_ipv6_cidrs_json:
+        description: JSON array of IPv6 CIDRs allowed for SSH and any admin-only firewall rules
+        required: true
+        default: '["::/0"]'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hippoject-terraform
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      TF_IN_AUTOMATION: true
+      TF_INPUT: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Restore persistent Terraform state
+        run: |
+          STATE_DIR="$HOME/.terraform-state/hippoject-infra"
+          mkdir -p "$STATE_DIR"
+          if [ -f "$STATE_DIR/terraform.tfstate" ]; then
+            cp "$STATE_DIR/terraform.tfstate" ./terraform.tfstate
+          fi
+          if [ -f "$STATE_DIR/terraform.tfstate.backup" ]; then
+            cp "$STATE_DIR/terraform.tfstate.backup" ./terraform.tfstate.backup
+          fi
+
+      - name: Render workflow tfvars
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: |
+          test -n "$HCLOUD_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ZONE_ID"
+          test -n "$SSH_PUBLIC_KEY"
+          cat > workflow.auto.tfvars <<EOF
+          hcloud_token         = "$HCLOUD_TOKEN"
+          cloudflare_api_token = "$CLOUDFLARE_API_TOKEN"
+          cloudflare_zone_id   = "$CLOUDFLARE_ZONE_ID"
+          cloudflare_proxied   = ${{ inputs.cloudflare_proxied }}
+          project_name         = "${{ inputs.project_name }}"
+          root_domain          = "${{ inputs.root_domain }}"
+          server_type          = "${{ inputs.server_type }}"
+          server_image         = "${{ inputs.server_image }}"
+          server_location      = "${{ inputs.server_location }}"
+          volume_size_gb       = ${{ inputs.volume_size_gb }}
+          enable_backups       = ${{ inputs.enable_backups }}
+          ssh_public_key       = "$SSH_PUBLIC_KEY"
+          admin_ipv4_cidrs     = ${{ inputs.admin_ipv4_cidrs_json }}
+          admin_ipv6_cidrs     = ${{ inputs.admin_ipv6_cidrs_json }}
+          EOF
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        if: ${{ inputs.mode == 'apply' }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Show Terraform outputs
+        if: ${{ inputs.mode == 'apply' }}
+        run: terraform output
+
+      - name: Persist Terraform state
+        if: always()
+        run: |
+          STATE_DIR="$HOME/.terraform-state/hippoject-infra"
+          mkdir -p "$STATE_DIR"
+          if [ -f terraform.tfstate ]; then
+            cp terraform.tfstate "$STATE_DIR/terraform.tfstate"
+          fi
+          if [ -f terraform.tfstate.backup ]; then
+            cp terraform.tfstate.backup "$STATE_DIR/terraform.tfstate.backup"
+          fi
+
+      - name: Cleanup workflow files
+        if: always()
+        run: rm -f workflow.auto.tfvars tfplan

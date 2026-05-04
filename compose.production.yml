@@ -183,9 +183,104 @@ services:
     networks:
       - edge
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: hippoject-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - internal
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: hippoject-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - internal
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: hippoject-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - internal
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: hippoject-node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - internal
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: hippoject-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - internal
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: hippoject-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-please-rotate}
+      GF_SERVER_ROOT_URL: https://grafana.${ROOT_DOMAIN}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=hippoject-edge
+      - traefik.http.routers.hippoject-grafana.rule=Host(`grafana.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hippoject-grafana.entrypoints=websecure
+      - traefik.http.routers.hippoject-grafana.tls.certresolver=letsencrypt
+      - traefik.http.services.hippoject-grafana.loadbalancer.server.port=3000
+    networks:
+      - internal
+      - edge
+
 volumes:
   postgres_data:
   uptime_kuma_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:
 
 networks:
   edge:

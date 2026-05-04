@@ -34,7 +34,7 @@ This repo ships a single-host production stack in `compose.production.yml` with:
 - `https://hippoject.<domain>` → frontend
 - `https://hippoject-api.<domain>` → backend
 - `https://auth.<domain>` → Keycloak
-- `https://monitoring.<domain>` → Uptime Kuma
+- `https://monitoring.<domain>` → Grafana (Prometheus metrics + Loki logs)
 - `postgres://<host>:5432` → PostgreSQL (publicly exposed if you publish port 5432)
 - Traefik for reverse proxy and TLS
 - PostgreSQL for persistence
@@ -229,13 +229,11 @@ For day-2 operations, logs, database access, Keycloak admin access, restarts, an
 
 - `PRODUCTION_RUNBOOK.md`
 
-A minimal uptime monitoring starter is also included here:
-
-- `monitoring/uptime-kuma.compose.yml`
-
-In the integrated production stack, Uptime Kuma is also exposed at:
+The integrated production stack exposes Grafana at:
 
 - `https://monitoring.<domain>`
+
+Grafana is provisioned with Prometheus metrics and Loki/Promtail container logs.
 
 ## Release / handoff
 

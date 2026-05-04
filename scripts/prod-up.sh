@@ -8,4 +8,4 @@ touch traefik/letsencrypt/acme.json
 chmod 600 traefik/letsencrypt/acme.json
 ./scripts/ghcr-login.sh
 
-docker compose --env-file .env.production -f compose.production.yml up -d
+docker compose --env-file .env.production -f compose.production.yml up -d --remove-orphans

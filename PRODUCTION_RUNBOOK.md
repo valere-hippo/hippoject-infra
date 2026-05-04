@@ -247,25 +247,11 @@ curl https://auth.<domain>/realms/hippoject/.well-known/openid-configuration
 
 ## Monitoring recommendation
 
-For a simple first step, run **Uptime Kuma** on the same host and monitor:
-
-- `https://hippoject.<domain>`
-- `https://hippoject-api.<domain>/actuator/health`
-- `https://auth.<domain>/realms/hippoject/.well-known/openid-configuration`
-
-In the current infra repo, Uptime Kuma can be exposed directly through Traefik at:
+Grafana is provisioned in the production compose file at:
 
 - `https://monitoring.<domain>`
 
-A starter compose file is available in `monitoring/uptime-kuma.compose.yml`.
-
-For a fuller setup later, add:
-
-- Uptime Kuma for external checks
-- Node Exporter for host metrics
-- cAdvisor for container metrics
-- Grafana + Prometheus for dashboards and alerting
-- Loki + Promtail for central log search
+Prometheus collects backend, host and container metrics. Loki/Promtail collects Docker logs for backend, frontend, Keycloak, Postgres and Traefik. During deployment, `prod-up.sh` and `prod-pull.sh` run Docker Compose with `--remove-orphans`, so the old Uptime Kuma container is removed and cannot keep the `monitoring.<domain>` route.
 
 ## Secret rotation checklist
 

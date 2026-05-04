@@ -167,22 +167,6 @@ services:
     networks:
       - edge
 
-  uptime-kuma:
-    image: louislam/uptime-kuma:1
-    container_name: hippoject-uptime-kuma
-    restart: unless-stopped
-    volumes:
-      - uptime_kuma_data:/app/data
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=hippoject-edge
-      - traefik.http.routers.hippoject-monitoring.rule=Host(`monitoring.${ROOT_DOMAIN}`)
-      - traefik.http.routers.hippoject-monitoring.entrypoints=websecure
-      - traefik.http.routers.hippoject-monitoring.tls.certresolver=letsencrypt
-      - traefik.http.services.hippoject-monitoring.loadbalancer.server.port=3001
-    networks:
-      - edge
-
   prometheus:
     image: prom/prometheus:v3.1.0
     container_name: hippoject-prometheus
@@ -256,7 +240,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-please-rotate}
-      GF_SERVER_ROOT_URL: https://grafana.${ROOT_DOMAIN}
+      GF_SERVER_ROOT_URL: https://monitoring.${ROOT_DOMAIN}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -267,7 +251,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=hippoject-edge
-      - traefik.http.routers.hippoject-grafana.rule=Host(`grafana.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hippoject-grafana.rule=Host(`monitoring.${ROOT_DOMAIN}`)
       - traefik.http.routers.hippoject-grafana.entrypoints=websecure
       - traefik.http.routers.hippoject-grafana.tls.certresolver=letsencrypt
       - traefik.http.services.hippoject-grafana.loadbalancer.server.port=3000
@@ -277,7 +261,6 @@ services:
 
 volumes:
   postgres_data:
-  uptime_kuma_data:
   prometheus_data:
   loki_data:
   grafana_data:

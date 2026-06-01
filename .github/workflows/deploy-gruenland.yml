@@ -14,6 +14,43 @@ jobs:
   deploy:
     runs-on: [self-hosted, Linux, X64, hippoject-prod]
     steps:
+      - name: Ensure Grünland DNS record
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ZONE_ID:-}"
+          export TARGET_NAME="gruenland.hipposideros-cloud.com"
+          export TARGET_IP="$(curl -fsS https://api.ipify.org)"
+          python3 <<'PY'
+          import json, os, urllib.parse, urllib.request
+          token = os.environ['CLOUDFLARE_API_TOKEN']
+          zone = os.environ['CLOUDFLARE_ZONE_ID']
+          name = os.environ['TARGET_NAME']
+          ip = os.environ['TARGET_IP']
+          headers = {
+              'Authorization': f'Bearer {token}',
+              'Content-Type': 'application/json',
+          }
+          def request(method, url, data=None):
+              body = None if data is None else json.dumps(data).encode()
+              req = urllib.request.Request(url, data=body, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.load(resp)
+          q = urllib.parse.urlencode({'type': 'A', 'name': name})
+          base = f'https://api.cloudflare.com/client/v4/zones/{zone}/dns_records'
+          found = request('GET', f'{base}?{q}')['result']
+          payload = {'type': 'A', 'name': name, 'content': ip, 'ttl': 1, 'proxied': False}
+          if found:
+              request('PUT', f"{base}/{found[0]['id']}", payload)
+              print(f'Updated {name} -> {ip}')
+          else:
+              request('POST', base, payload)
+              print(f'Created {name} -> {ip}')
+          PY
+
       - name: Deploy Grünland backend stack on Hippoject VPS
         env:
           GRUENLAND_ENV_PRODUCTION: ${{ secrets.GRUENLAND_ENV_PRODUCTION }}

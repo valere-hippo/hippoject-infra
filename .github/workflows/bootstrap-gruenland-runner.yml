@@ -29,6 +29,7 @@ jobs:
             exit 1
           fi
 
+          RUNNER_DIR="$(realpath -m "$RUNNER_DIR")"
           mkdir -p "$RUNNER_DIR"
           cd "$RUNNER_DIR"
 
@@ -46,9 +47,12 @@ jobs:
             rm -f actions-runner.tar.gz
           fi
 
-          echo "Stopping any old Grünland runner process..."
-          pkill -f "$RUNNER_DIR" 2>/dev/null || true
-          sleep 2
+          echo "Stopping any old Grünland runner process in $RUNNER_DIR..."
+          pgrep -af "$RUNNER_DIR" || true
+          pkill -u "$USER" -f "$RUNNER_DIR" 2>/dev/null || true
+          sleep 3
+          echo "Remaining Grünland runner processes:"
+          pgrep -af "$RUNNER_DIR" || true
 
           if [ -f ./.runner ]; then
             echo "Removing stale runner registration..."
@@ -66,8 +70,11 @@ jobs:
             --replace
 
           echo "Starting Grünland runner in a detached session..."
-          setsid env -u RUNNER_TRACKING_ID bash -lc "cd '$RUNNER_DIR' && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
+          nohup setsid env -u RUNNER_TRACKING_ID bash -lc "cd '$RUNNER_DIR' && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
+          disown || true
 
           sleep 10
+          echo "Current Grünland runner processes:"
+          pgrep -af "$RUNNER_DIR" || true
           echo "Grünland runner bootstrap finished. Recent log:"
           tail -80 "$RUNNER_DIR/runner.log" || true

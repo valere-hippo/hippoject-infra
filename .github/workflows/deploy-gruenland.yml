@@ -1,0 +1,91 @@
+name: gruenland-deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gruenland-direct-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+    steps:
+      - name: Deploy Grünland backend stack on Hippoject VPS
+        env:
+          GRUENLAND_ENV_PRODUCTION: ${{ secrets.GRUENLAND_ENV_PRODUCTION }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DEPLOY_DIR: ${{ github.workspace }}/../gruenland-backend-direct-deploy
+        run: |
+          set -euo pipefail
+          test -n "${GRUENLAND_ENV_PRODUCTION:-}"
+          test -n "${GHCR_USERNAME:-}"
+          test -n "${GHCR_TOKEN:-}"
+
+          DEPLOY_DIR="$(realpath -m "$DEPLOY_DIR")"
+          mkdir -p "$DEPLOY_DIR"
+          cd "$DEPLOY_DIR"
+
+          cat > docker-compose.prod.yml <<'EOF'
+          services:
+            gruenland-api:
+              image: ghcr.io/valere-hippo/backend-gruenland-kartierung:latest
+              container_name: gruenland-api
+              restart: unless-stopped
+              depends_on:
+                gruenland-mongo:
+                  condition: service_healthy
+              env_file:
+                - .env.production
+              environment:
+                SPRING_PROFILES_ACTIVE: prod
+                SERVER_PORT: 8080
+                MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@gruenland-mongo:27017/kartierungDB?authSource=admin
+              labels:
+                - traefik.enable=true
+                - traefik.http.routers.gruenland-api.rule=Host(`gruenland.hipposideros-cloud.com`)
+                - traefik.http.routers.gruenland-api.entrypoints=websecure
+                - traefik.http.routers.gruenland-api.tls.certresolver=cloudflare
+                - traefik.http.services.gruenland-api.loadbalancer.server.port=8080
+              networks:
+                - proxy
+                - gruenland-internal
+
+            gruenland-mongo:
+              image: mongo:7
+              container_name: gruenland-mongo
+              restart: unless-stopped
+              env_file:
+                - .env.production
+              volumes:
+                - gruenland_mongo_data:/data/db
+              healthcheck:
+                test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' || exit 1"]
+                interval: 10s
+                timeout: 5s
+                retries: 10
+              networks:
+                - gruenland-internal
+
+          volumes:
+            gruenland_mongo_data:
+
+          networks:
+            proxy:
+              external: true
+            gruenland-internal:
+              driver: bridge
+          EOF
+
+          printf '%s\n' "$GRUENLAND_ENV_PRODUCTION" > .env.production
+          chmod 600 .env.production
+
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          docker compose --env-file .env.production -f docker-compose.prod.yml pull
+          docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
+          docker compose --env-file .env.production -f docker-compose.prod.yml ps
+          docker image prune -f

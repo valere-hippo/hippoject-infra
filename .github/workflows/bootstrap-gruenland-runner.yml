@@ -54,12 +54,8 @@ jobs:
             echo "Runner already configured in $RUNNER_DIR"
           fi
 
-          if pgrep -u "$USER" -f "Runner.Listener" >/dev/null; then
-            echo "A runner listener is already running for this user."
-          else
-            echo "Starting Grünland runner in a detached session..."
-            setsid bash -c "cd '$RUNNER_DIR' && unset RUNNER_TRACKING_ID && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
-          fi
+          echo "Starting/restarting Grünland runner in a detached session..."
+          setsid bash -c "cd '$RUNNER_DIR' && unset RUNNER_TRACKING_ID && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
 
           sleep 8
           echo "Grünland runner bootstrap finished. Recent log:"

@@ -13,6 +13,7 @@ jobs:
       - name: Install Grünland backend runner on this VPS
         env:
           RUNNER_TOKEN: ${{ secrets.GRUENLAND_RUNNER_REGISTRATION_TOKEN }}
+          REMOVE_TOKEN: ${{ secrets.GRUENLAND_RUNNER_REMOVE_TOKEN }}
           RUNNER_URL: https://github.com/valere-hippo/backend-gruenland-kartierung
           RUNNER_NAME: gruenland-backend-vps
           RUNNER_LABELS: gruenland-backend
@@ -23,9 +24,12 @@ jobs:
             echo "Missing secret GRUENLAND_RUNNER_REGISTRATION_TOKEN"
             exit 1
           fi
+          if [ -z "${REMOVE_TOKEN:-}" ]; then
+            echo "Missing secret GRUENLAND_RUNNER_REMOVE_TOKEN"
+            exit 1
+          fi
 
           mkdir -p "$RUNNER_DIR"
-
           cd "$RUNNER_DIR"
 
           if [ ! -f ./config.sh ]; then
@@ -42,21 +46,28 @@ jobs:
             rm -f actions-runner.tar.gz
           fi
 
-          if [ ! -f ./.runner ]; then
-            ./config.sh \
-              --url "$RUNNER_URL" \
-              --token "$RUNNER_TOKEN" \
-              --name "$RUNNER_NAME" \
-              --labels "$RUNNER_LABELS" \
-              --unattended \
-              --replace
-          else
-            echo "Runner already configured in $RUNNER_DIR"
+          echo "Stopping any old Grünland runner process..."
+          pkill -f "$RUNNER_DIR" 2>/dev/null || true
+          sleep 2
+
+          if [ -f ./.runner ]; then
+            echo "Removing stale runner registration..."
+            ./config.sh remove --token "$REMOVE_TOKEN" || true
           fi
+          rm -f .runner .credentials .credentials_rsaparams
 
-          echo "Starting/restarting Grünland runner in a detached session..."
-          setsid bash -c "cd '$RUNNER_DIR' && unset RUNNER_TRACKING_ID && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
+          echo "Registering Grünland runner..."
+          ./config.sh \
+            --url "$RUNNER_URL" \
+            --token "$RUNNER_TOKEN" \
+            --name "$RUNNER_NAME" \
+            --labels "$RUNNER_LABELS" \
+            --unattended \
+            --replace
 
-          sleep 8
+          echo "Starting Grünland runner in a detached session..."
+          setsid env -u RUNNER_TRACKING_ID bash -lc "cd '$RUNNER_DIR' && exec ./run.sh >> '$RUNNER_DIR/runner.log' 2>&1" </dev/null >/dev/null 2>&1 &
+
+          sleep 10
           echo "Grünland runner bootstrap finished. Recent log:"
           tail -80 "$RUNNER_DIR/runner.log" || true

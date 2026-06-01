@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Deploy the stack or only print recent backend logs
+        description: Deploy, reset Mongo data, or only print recent backend logs
         required: true
         default: deploy
         type: choice
         options:
           - deploy
+          - reset-mongo
           - logs
 
 permissions:
@@ -67,6 +68,7 @@ jobs:
           GRUENLAND_ENV_PRODUCTION: ${{ secrets.GRUENLAND_ENV_PRODUCTION }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          MODE: ${{ github.event.inputs.mode }}
           DEPLOY_DIR: ${{ github.workspace }}/../gruenland-backend-direct-deploy
         run: |
           set -euo pipefail
@@ -200,6 +202,13 @@ jobs:
               fi
             done
           done
+
+          if [ "$MODE" = "reset-mongo" ]; then
+            echo "Resetting Grünland MongoDB data volume only. Upload/PDF volume will be preserved."
+            docker compose --env-file .env.production -f docker-compose.prod.yml down --remove-orphans || true
+            project_name="$(basename "$PWD")"
+            docker volume rm "${project_name}_gruenland_mongo_data" || true
+          fi
 
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker compose --env-file .env.production -f docker-compose.prod.yml pull

@@ -1,0 +1,66 @@
+name: bootstrap-gruenland-runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-runner:
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+    steps:
+      - name: Install Grünland backend runner on this VPS
+        env:
+          RUNNER_TOKEN: ${{ secrets.GRUENLAND_RUNNER_REGISTRATION_TOKEN }}
+          RUNNER_URL: https://github.com/valere-hippo/backend-gruenland-kartierung
+          RUNNER_NAME: gruenland-backend-vps
+          RUNNER_LABELS: gruenland-backend
+          RUNNER_DIR: /opt/actions-runner-gruenland-backend
+        run: |
+          set -euo pipefail
+          if [ -z "${RUNNER_TOKEN:-}" ]; then
+            echo "Missing secret GRUENLAND_RUNNER_REGISTRATION_TOKEN"
+            exit 1
+          fi
+
+          if [ ! -d "$RUNNER_DIR" ]; then
+            sudo mkdir -p "$RUNNER_DIR" 2>/dev/null || mkdir -p "$RUNNER_DIR"
+          fi
+          if [ ! -w "$RUNNER_DIR" ]; then
+            sudo chown "$USER:$(id -gn)" "$RUNNER_DIR"
+          fi
+
+          cd "$RUNNER_DIR"
+
+          if [ ! -f ./config.sh ]; then
+            RUNNER_VERSION=$(python3 - <<'PY'
+          import json, urllib.request
+          with urllib.request.urlopen('https://api.github.com/repos/actions/runner/releases/latest', timeout=30) as resp:
+              tag = json.load(resp)['tag_name']
+          print(tag.lstrip('v'))
+          PY
+          )
+            curl -fsSL -o actions-runner.tar.gz \
+              "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+            tar xzf actions-runner.tar.gz
+            rm -f actions-runner.tar.gz
+          fi
+
+          if [ ! -f ./.runner ]; then
+            ./config.sh \
+              --url "$RUNNER_URL" \
+              --token "$RUNNER_TOKEN" \
+              --name "$RUNNER_NAME" \
+              --labels "$RUNNER_LABELS" \
+              --unattended \
+              --replace
+          else
+            echo "Runner already configured in $RUNNER_DIR"
+          fi
+
+          sudo ./svc.sh install "$USER" 2>/dev/null || true
+          sudo ./svc.sh start
+          sudo ./svc.sh status
+
+          echo "Grünland runner bootstrap finished."

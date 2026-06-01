@@ -2,6 +2,15 @@ name: gruenland-deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy the stack or only print recent backend logs
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - logs
 
 permissions:
   contents: read
@@ -15,6 +24,7 @@ jobs:
     runs-on: [self-hosted, Linux, X64, hippoject-prod]
     steps:
       - name: Ensure Grünland DNS record
+        if: ${{ github.event.inputs.mode != 'logs' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -52,6 +62,7 @@ jobs:
           PY
 
       - name: Deploy Grünland backend stack on Hippoject VPS
+        if: ${{ github.event.inputs.mode != 'logs' }}
         env:
           GRUENLAND_ENV_PRODUCTION: ${{ secrets.GRUENLAND_ENV_PRODUCTION }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
@@ -81,7 +92,11 @@ jobs:
               environment:
                 SPRING_PROFILES_ACTIVE: prod
                 SERVER_PORT: 8080
+                APP_PUBLIC_BASE_URL: https://gruenland.hipposideros-cloud.com
+                LOCAL_STORAGE_DIR: /app/uploads
                 MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@gruenland-mongo:27017/kartierungDB?authSource=admin
+              volumes:
+                - gruenland_uploads:/app/uploads
               labels:
                 - traefik.enable=true
                 - traefik.http.routers.gruenland-api.rule=Host(`gruenland.hipposideros-cloud.com`)
@@ -112,6 +127,7 @@ jobs:
 
           volumes:
             gruenland_mongo_data:
+            gruenland_uploads:
 
           networks:
             edge:
@@ -129,3 +145,20 @@ jobs:
           docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
           docker compose --env-file .env.production -f docker-compose.prod.yml ps
           docker image prune -f
+
+      - name: Show recent Grünland backend logs
+        if: ${{ always() }}
+        env:
+          DEPLOY_DIR: ${{ github.workspace }}/../gruenland-backend-direct-deploy
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="$(realpath -m "$DEPLOY_DIR")"
+          if [ ! -d "$DEPLOY_DIR" ]; then
+            echo "Deploy directory does not exist yet: $DEPLOY_DIR"
+            exit 0
+          fi
+          cd "$DEPLOY_DIR"
+          echo "Docker compose status:"
+          docker compose --env-file .env.production -f docker-compose.prod.yml ps || true
+          echo "Recent gruenland-api logs:"
+          docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=300 gruenland-api || true

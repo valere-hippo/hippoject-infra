@@ -94,7 +94,7 @@ jobs:
                 SERVER_PORT: 8080
                 APP_PUBLIC_BASE_URL: https://gruenland.hipposideros-cloud.com
                 LOCAL_STORAGE_DIR: /app/uploads
-                MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@gruenland-mongo:27017/kartierungDB?authSource=admin
+                MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-gruenland}:${MONGO_INITDB_ROOT_PASSWORD:-}@gruenland-mongo:27017/${MONGO_DATABASE:-kartierungDB}?authSource=${MONGO_AUTH_SOURCE:-admin}}
               volumes:
                 - gruenland_uploads:/app/uploads
               labels:
@@ -139,6 +139,55 @@ jobs:
 
           printf '%s\n' "$GRUENLAND_ENV_PRODUCTION" > .env.production
           chmod 600 .env.production
+
+          # Normalize common secret names and reuse Hippoject SMTP values when Grünland-specific
+          # values are not present. Values are appended without printing them.
+          value_from_file() {
+            local file="$1" key="$2"
+            [ -f "$file" ] || return 0
+            grep -E "^${key}=" "$file" | tail -n 1 | sed -E "s/^${key}=//"
+          }
+          first_value() {
+            local key value file
+            for key in "$@"; do
+              value="$(value_from_file .env.production "$key")"
+              if [ -n "$value" ]; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done
+          }
+          append_if_missing() {
+            local key="$1" value="$2"
+            if ! grep -qE "^${key}=" .env.production && [ -n "$value" ]; then
+              printf '%s=%s\n' "$key" "$value" >> .env.production
+            fi
+          }
+
+          append_if_missing AWS_ACCESS_KEY_ID "$(first_value AWS_ACCESS_KEY_ID AWS_ACCESS_KEY AWS_S3_ACCESS_KEY)"
+          append_if_missing AWS_SECRET_ACCESS_KEY "$(first_value AWS_SECRET_ACCESS_KEY AWS_SECRET_KEY AWS_S3_SECRET_KEY)"
+          append_if_missing AWS_REGION "$(first_value AWS_REGION AWS_DEFAULT_REGION)"
+          append_if_missing AWS_S3_BUCKET "$(first_value AWS_S3_BUCKET AWS_BUCKET_NAME S3_BUCKET_NAME)"
+          append_if_missing OPENAI_API_KEY "$(first_value OPENAI_API_KEY OPENAI_KEY OPEN_AI_API_KEY)"
+          append_if_missing MONGO_DATABASE "$(first_value MONGO_DATABASE MONGODB_DATABASE)"
+
+          HIPPOJECT_ENV_CANDIDATES=(
+            "${{ secrets.DEPLOY_PATH }}/.env.production"
+            "/opt/hippoject-infra/.env.production"
+            "${{ github.workspace }}/../hippoject-infra/.env.production"
+          )
+          for key in EMAIL_NOTIFICATIONS_ENABLED SMTP_SERVER SMTP_PORT EMAIL PASSWORD; do
+            if grep -qE "^${key}=" .env.production; then
+              continue
+            fi
+            for candidate in "${HIPPOJECT_ENV_CANDIDATES[@]}"; do
+              value="$(value_from_file "$candidate" "$key")"
+              if [ -n "$value" ]; then
+                printf '%s=%s\n' "$key" "$value" >> .env.production
+                break
+              fi
+            done
+          done
 
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker compose --env-file .env.production -f docker-compose.prod.yml pull

@@ -49,10 +49,11 @@ jobs:
                 - traefik.enable=true
                 - traefik.http.routers.gruenland-api.rule=Host(`gruenland.hipposideros-cloud.com`)
                 - traefik.http.routers.gruenland-api.entrypoints=websecure
-                - traefik.http.routers.gruenland-api.tls.certresolver=cloudflare
+                - traefik.docker.network=hippoject-edge
+                - traefik.http.routers.gruenland-api.tls.certresolver=letsencrypt
                 - traefik.http.services.gruenland-api.loadbalancer.server.port=8080
               networks:
-                - proxy
+                - edge
                 - gruenland-internal
 
             gruenland-mongo:
@@ -75,8 +76,9 @@ jobs:
             gruenland_mongo_data:
 
           networks:
-            proxy:
+            edge:
               external: true
+              name: hippoject-edge
             gruenland-internal:
               driver: bridge
           EOF

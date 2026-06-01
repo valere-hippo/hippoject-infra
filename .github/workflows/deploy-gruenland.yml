@@ -85,6 +85,8 @@ jobs:
               container_name: gruenland-api
               restart: unless-stopped
               depends_on:
+                gruenland-permissions:
+                  condition: service_completed_successfully
                 gruenland-mongo:
                   condition: service_healthy
               env_file:
@@ -108,6 +110,16 @@ jobs:
               networks:
                 - edge
                 - gruenland-internal
+
+            gruenland-permissions:
+              image: alpine:3.20
+              restart: "no"
+              command: >
+                sh -c "mkdir -p /app/uploads/reports
+                && chown -R 10001:10001 /app/uploads
+                && chmod -R u+rwX,g+rwX /app/uploads"
+              volumes:
+                - gruenland_uploads:/app/uploads
 
             gruenland-mongo:
               image: mongo:7
@@ -191,6 +203,8 @@ jobs:
 
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker compose --env-file .env.production -f docker-compose.prod.yml pull
+          docker compose --env-file .env.production -f docker-compose.prod.yml rm -f -s gruenland-permissions || true
+          docker compose --env-file .env.production -f docker-compose.prod.yml run --rm --no-deps gruenland-permissions
           docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
           docker compose --env-file .env.production -f docker-compose.prod.yml ps
           docker image prune -f

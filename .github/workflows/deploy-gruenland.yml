@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ZONE_ID:-}"
-          export TARGET_NAME="gruenland.hipposideros-cloud.com"
+          export TARGET_NAME="gruenland.hipposideros-cloud.de"
           export TARGET_IP="$(curl -fsS https://api.ipify.org)"
           python3 <<'PY'
           import json, os, urllib.parse, urllib.request
@@ -96,14 +96,14 @@ jobs:
               environment:
                 SPRING_PROFILES_ACTIVE: prod
                 SERVER_PORT: 8080
-                APP_PUBLIC_BASE_URL: https://gruenland.hipposideros-cloud.com
+                APP_PUBLIC_BASE_URL: https://gruenland.hipposideros-cloud.de
                 LOCAL_STORAGE_DIR: /app/uploads
                 MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-gruenland}:${MONGO_INITDB_ROOT_PASSWORD:-}@gruenland-mongo:27017/${MONGO_DATABASE:-kartierungDB}?authSource=${MONGO_AUTH_SOURCE:-admin}}
               volumes:
                 - gruenland_uploads:/app/uploads
               labels:
                 - traefik.enable=true
-                - traefik.http.routers.gruenland-api.rule=Host(`gruenland.hipposideros-cloud.com`)
+                - traefik.http.routers.gruenland-api.rule=Host(`gruenland.hipposideros-cloud.de`)
                 - traefik.http.routers.gruenland-api.entrypoints=websecure
                 - traefik.http.routers.gruenland-api.tls=true
                 - traefik.docker.network=hippoject-edge

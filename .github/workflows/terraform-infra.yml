@@ -15,7 +15,7 @@ on:
       root_domain:
         description: Public root domain
         required: true
-        default: hipposideros-cloud.com
+        default: hipposideros-cloud.de
         type: string
       project_name:
         description: Project prefix used for Terraform resources

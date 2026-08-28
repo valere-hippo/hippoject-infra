@@ -30,7 +30,7 @@ variable "project_name" {
 variable "root_domain" {
   description = "Primary public domain"
   type        = string
-  default     = "hippocloud.de"
+  default     = "hipposideros-cloud.de"
 }
 
 variable "server_type" {

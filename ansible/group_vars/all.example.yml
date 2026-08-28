@@ -1,6 +1,6 @@
 hippoject_root: /opt/hippoject-infra
 hippoject_timezone: UTC
-hippoject_domain: hippocloud.de
+hippoject_domain: hipposideros-cloud.de
 hippoject_acme_email: v.youbi@hipposideros.de
 hippoject_postgres_user: hippoject
 hippoject_postgres_password: change-me

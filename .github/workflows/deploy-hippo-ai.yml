@@ -104,19 +104,20 @@ jobs:
           API_PORT: ${{ secrets.API_PORT }}
         run: |
           set -euo pipefail
-          test -n "${AI_DEPLOY_PATH:-}"
           test -n "${GHCR_USERNAME:-}"
           test -n "${GHCR_TOKEN:-}"
 
-          if ! mkdir -p "$AI_DEPLOY_PATH" 2>/dev/null; then
-            if command -v sudo >/dev/null 2>&1; then
-              sudo install -d -m 755 -o "$(id -un)" -g "$(id -gn)" "$AI_DEPLOY_PATH"
-            else
-              echo "AI_DEPLOY_PATH='$AI_DEPLOY_PATH' is not writable and sudo is unavailable." >&2
-              exit 1
-            fi
+          preferred_dir="${AI_DEPLOY_PATH:-${GITHUB_WORKSPACE}/../hippo-ai-direct-deploy}"
+          fallback_dir="${GITHUB_WORKSPACE}/../hippo-ai-direct-deploy"
+          DEPLOY_DIR="$(realpath -m "$preferred_dir")"
+          FALLBACK_DIR="$(realpath -m "$fallback_dir")"
+
+          if ! mkdir -p "$DEPLOY_DIR" 2>/dev/null; then
+            echo "AI_DEPLOY_PATH='$DEPLOY_DIR' is not writable, using '$FALLBACK_DIR' instead." >&2
+            DEPLOY_DIR="$FALLBACK_DIR"
+            mkdir -p "$DEPLOY_DIR"
           fi
-          cd "$AI_DEPLOY_PATH"
+          cd "$DEPLOY_DIR"
 
           cat > .env.production <<EOF
           app_env=production

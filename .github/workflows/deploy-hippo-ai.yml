@@ -67,6 +67,7 @@ jobs:
       - name: Render Hippo AI stack and deploy
         env:
           AI_DEPLOY_PATH: ${{ secrets.AI_DEPLOY_PATH }}
+          IMAGE_OWNER: ${{ github.repository_owner }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
@@ -162,7 +163,7 @@ jobs:
           cat > docker-compose.hippo-ai.yml <<EOF
           services:
             api:
-              image: ghcr.io/${GHCR_USERNAME}/hippo-ai-api:latest
+              image: ghcr.io/${IMAGE_OWNER}/hippo-ai-api:latest
               container_name: hippo-ai-api
               restart: unless-stopped
               env_file:

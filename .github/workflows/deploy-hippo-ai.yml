@@ -1,0 +1,216 @@
+name: hippo-ai-deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hippo-ai-direct-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+
+    steps:
+      - name: Ensure Hippo AI DNS record
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ZONE_ID:-}"
+          export TARGET_NAME="api.hipposideros-cloud.de"
+          export TARGET_IP="$(curl -fsS https://api.ipify.org)"
+          python3 <<'PY'
+          import json, os, urllib.parse, urllib.request
+          token = os.environ['CLOUDFLARE_API_TOKEN']
+          zone = os.environ['CLOUDFLARE_ZONE_ID']
+          name = os.environ['TARGET_NAME']
+          ip = os.environ['TARGET_IP']
+          headers = {
+              'Authorization': f'Bearer {token}',
+              'Content-Type': 'application/json',
+          }
+          def request(method, url, data=None):
+              body = None if data is None else json.dumps(data).encode()
+              req = urllib.request.Request(url, data=body, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.load(resp)
+          q = urllib.parse.urlencode({'type': 'A', 'name': name})
+          base = f'https://api.cloudflare.com/client/v4/zones/{zone}/dns_records'
+          found = request('GET', f'{base}?{q}')['result']
+          payload = {'type': 'A', 'name': name, 'content': ip, 'ttl': 1, 'proxied': False}
+          if found:
+              request('PUT', f"{base}/{found[0]['id']}", payload)
+              print(f'Updated {name} -> {ip}')
+          else:
+              request('POST', base, payload)
+              print(f'Created {name} -> {ip}')
+          PY
+
+      - name: Render Hippo AI stack and deploy
+        env:
+          AI_DEPLOY_PATH: ${{ secrets.AI_DEPLOY_PATH }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          HIPPO_API_KEY: ${{ secrets.HIPPO_API_KEY }}
+          HIPPO_API_URL: ${{ secrets.HIPPO_API_URL }}
+          HIPPO_EMBEDDING_KEY: ${{ secrets.HIPPO_EMBEDDING_KEY }}
+          HIPPO_EMBEDDING_URL: ${{ secrets.HIPPO_EMBEDDING_URL }}
+          HIPPO_MODEL: ${{ secrets.HIPPO_MODEL }}
+          HIPPO_RESPONSE_MAX_TOKENS: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS }}
+          HIPPO_RESPONSE_MAX_TOKENS_LONG: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS_LONG }}
+          HIPPO_S3_BUCKET_NAME: ${{ secrets.HIPPO_S3_BUCKET_NAME }}
+          HIPPO_S3_BUCKET_PREFIX: ${{ secrets.HIPPO_S3_BUCKET_PREFIX }}
+          HIPPO_S3_KEY_PREFIX: ${{ secrets.HIPPO_S3_KEY_PREFIX }}
+          JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SENDER: ${{ secrets.SMTP_SENDER }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+          SMTP_USE_TLS: ${{ secrets.SMTP_USE_TLS }}
+          STT_COMPUTE_TYPE: ${{ secrets.STT_COMPUTE_TYPE }}
+          STT_DEVICE: ${{ secrets.STT_DEVICE }}
+          STT_LANGUAGE: ${{ secrets.STT_LANGUAGE }}
+          STT_MODEL: ${{ secrets.STT_MODEL }}
+          API_PORT: ${{ secrets.API_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "${AI_DEPLOY_PATH:-}"
+          test -n "${GHCR_USERNAME:-}"
+          test -n "${GHCR_TOKEN:-}"
+
+          mkdir -p "$AI_DEPLOY_PATH"
+          cd "$AI_DEPLOY_PATH"
+
+          cat > .env.production <<EOF
+          app_env=production
+          api_port=${API_PORT:-8000}
+          postgres_db=${POSTGRES_DB:-hippo_ai}
+          postgres_user=${POSTGRES_USER:-hippo}
+          postgres_password=${POSTGRES_PASSWORD:-change_me}
+          postgres_port=${POSTGRES_PORT:-5432}
+          redis_port=6379
+          jwt_secret_key=${JWT_SECRET_KEY:-change_this_to_a_long_random_secret}
+          jwt_algorithm=${JWT_ALGORITHM:-HS256}
+          access_token_expire_minutes=${ACCESS_TOKEN_EXPIRE_MINUTES:-5256000}
+          hippo_api_url=${HIPPO_API_URL:-https://api.hipposideros-cloud.de}
+          hippo_api_key=${HIPPO_API_KEY:-}
+          hippo_model=${HIPPO_MODEL:-hippo-ai}
+          hippo_embedding_url=${HIPPO_EMBEDDING_URL:-}
+          hippo_embedding_key=${HIPPO_EMBEDDING_KEY:-}
+          hippo_response_max_tokens=${HIPPO_RESPONSE_MAX_TOKENS:-4096}
+          hippo_response_max_tokens_long=${HIPPO_RESPONSE_MAX_TOKENS_LONG:-8192}
+          hippo_vision_model=
+          aws_region=${AWS_REGION:-eu-central-1}
+          aws_access_key_id=${AWS_ACCESS_KEY_ID:-}
+          aws_secret_access_key=${AWS_SECRET_ACCESS_KEY:-}
+          aws_session_token=${AWS_SESSION_TOKEN:-}
+          hippo_s3_bucket_name=${HIPPO_S3_BUCKET_NAME:-}
+          hippo_s3_bucket_prefix=${HIPPO_S3_BUCKET_PREFIX:-hippo-ai-}
+          hippo_s3_key_prefix=${HIPPO_S3_KEY_PREFIX:-projects}
+          smtp_host=${SMTP_HOST:-smtp.gmail.com}
+          smtp_port=${SMTP_PORT:-587}
+          smtp_username=${SMTP_USERNAME:-}
+          smtp_password=${SMTP_PASSWORD:-}
+          smtp_sender=${SMTP_SENDER:-Hippo AI <bat.hipposideros@gmail.com>}
+          smtp_use_tls=${SMTP_USE_TLS:-true}
+          smtp_use_ssl=${SMTP_USE_SSL:-false}
+          stt_model=${STT_MODEL:-base}
+          stt_device=${STT_DEVICE:-cpu}
+          stt_compute_type=${STT_COMPUTE_TYPE:-int8}
+          stt_language=${STT_LANGUAGE:-de}
+          EOF
+          chmod 600 .env.production
+
+          cat > docker-compose.hippo-ai.yml <<EOF
+          services:
+            api:
+              image: ghcr.io/${GHCR_USERNAME}/hippo-ai-api:latest
+              container_name: hippo-ai-api
+              restart: unless-stopped
+              env_file:
+                - .env.production
+              depends_on:
+                postgres:
+                  condition: service_healthy
+                redis:
+                  condition: service_started
+              volumes:
+                - hippo_ai_uploads:/app/uploads
+              labels:
+                - traefik.enable=true
+                - traefik.docker.network=hippoject-edge
+                - traefik.http.routers.hippo-ai-api.rule=Host(\`api.hipposideros-cloud.de\`)
+                - traefik.http.routers.hippo-ai-api.entrypoints=websecure
+                - traefik.http.routers.hippo-ai-api.tls=true
+                - traefik.http.routers.hippo-ai-api.tls.certresolver=letsencrypt
+                - traefik.http.services.hippo-ai-api.loadbalancer.server.port=8000
+              networks:
+                - hippo-ai-internal
+                - hippoject-edge
+
+            postgres:
+              image: postgres:17
+              container_name: hippo-ai-postgres
+              restart: unless-stopped
+              env_file:
+                - .env.production
+              environment:
+                POSTGRES_DB: \${postgres_db}
+                POSTGRES_USER: \${postgres_user}
+                POSTGRES_PASSWORD: \${postgres_password}
+              volumes:
+                - hippo_ai_postgres_data:/var/lib/postgresql/data
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U \${postgres_user} -d \${postgres_db}"]
+                interval: 10s
+                timeout: 5s
+                retries: 10
+              networks:
+                - hippo-ai-internal
+
+            redis:
+              image: redis:8-alpine
+              container_name: hippo-ai-redis
+              restart: unless-stopped
+              volumes:
+                - hippo_ai_redis_data:/data
+              networks:
+                - hippo-ai-internal
+
+          volumes:
+            hippo_ai_postgres_data:
+            hippo_ai_redis_data:
+            hippo_ai_uploads:
+
+          networks:
+            hippo-ai-internal:
+              driver: bridge
+            hippoject-edge:
+              external: true
+              name: hippoject-edge
+          EOF
+
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          docker network inspect hippoject-edge >/dev/null 2>&1 || docker network create hippoject-edge
+          docker compose --env-file .env.production -f docker-compose.hippo-ai.yml pull
+          docker compose --env-file .env.production -f docker-compose.hippo-ai.yml up -d --remove-orphans
+          docker compose --env-file .env.production -f docker-compose.hippo-ai.yml ps
+          docker image prune -f

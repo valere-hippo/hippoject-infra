@@ -108,7 +108,14 @@ jobs:
           test -n "${GHCR_USERNAME:-}"
           test -n "${GHCR_TOKEN:-}"
 
-          mkdir -p "$AI_DEPLOY_PATH"
+          if ! mkdir -p "$AI_DEPLOY_PATH" 2>/dev/null; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo install -d -m 755 -o "$(id -un)" -g "$(id -gn)" "$AI_DEPLOY_PATH"
+            else
+              echo "AI_DEPLOY_PATH='$AI_DEPLOY_PATH' is not writable and sudo is unavailable." >&2
+              exit 1
+            fi
+          fi
           cd "$AI_DEPLOY_PATH"
 
           cat > .env.production <<EOF

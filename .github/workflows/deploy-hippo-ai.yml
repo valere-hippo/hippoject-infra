@@ -47,14 +47,19 @@ jobs:
                   if raw:
                       print(raw, file=sys.stderr)
                   raise
-          q = urllib.parse.urlencode({'type': 'A', 'name': name})
+          q = urllib.parse.urlencode({'name': name})
           base = f'https://api.cloudflare.com/client/v4/zones/{zone}/dns_records'
-          found = request('GET', f'{base}?{q}')['result']
+          records = request('GET', f'{base}?{q}')['result']
           payload = {'type': 'A', 'name': name, 'content': ip, 'ttl': 1, 'proxied': False}
-          if found:
-              request('PUT', f"{base}/{found[0]['id']}", payload)
+          a_records = [record for record in records if record.get('type') == 'A']
+          cname_records = [record for record in records if record.get('type') == 'CNAME']
+          if a_records:
+              request('PUT', f"{base}/{a_records[0]['id']}", payload)
               print(f'Updated {name} -> {ip}')
           else:
+              for record in cname_records:
+                  request('DELETE', f"{base}/{record['id']}")
+                  print(f'Deleted conflicting CNAME {name}')
               request('POST', base, payload)
               print(f'Created {name} -> {ip}')
           PY

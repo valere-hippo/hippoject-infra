@@ -6,6 +6,7 @@ This file is the operational handoff for the single-host production deployment.
 
 - Frontend: `https://hippoject.<domain>`
 - API: `https://hippoject-api.<domain>`
+- Hippo AI API: `https://hippo-api.<domain>`
 - Keycloak: `https://auth.<domain>`
 - Monitoring: `https://monitoring.<domain>`
 - Keycloak admin console: `https://auth.<domain>/admin/master/console/`

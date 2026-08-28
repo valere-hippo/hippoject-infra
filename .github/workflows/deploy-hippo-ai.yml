@@ -23,7 +23,7 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ZONE_ID:-}"
-          export TARGET_NAME="api.hipposideros-cloud.de"
+          export TARGET_NAME="hippo-api.hipposideros-cloud.de"
           export TARGET_IP="$(curl -fsS https://api.ipify.org)"
           python3 <<'PY'
           import json, os, sys, urllib.error, urllib.parse, urllib.request
@@ -178,7 +178,7 @@ jobs:
               labels:
                 - traefik.enable=true
                 - traefik.docker.network=hippoject-edge
-                - traefik.http.routers.hippo-ai-api.rule=Host(\`api.hipposideros-cloud.de\`)
+                - traefik.http.routers.hippo-ai-api.rule=Host(\`hippo-api.hipposideros-cloud.de\`)
                 - traefik.http.routers.hippo-ai-api.entrypoints=websecure
                 - traefik.http.routers.hippo-ai-api.tls=true
                 - traefik.http.routers.hippo-ai-api.tls.certresolver=letsencrypt

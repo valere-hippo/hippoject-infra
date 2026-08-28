@@ -7,7 +7,7 @@ Hippoject is a Jira-inspired project management platform built with **Spring Boo
 - `hippoject-backend` → Spring Boot API
 - `hippoject-frontend` → Angular application
 - `hippoject-infra` → infra, compose, bootstrap and deployment automation
-- `hippo-ai` → separate AI stack deployed from this infra repo on the Hetzner runner
+- `hippo-ai` → separate AI stack deployed from this infra repo on the Hetzner runner and exposed as `https://hippo-api.<domain>`
 
 ## Local development
 
@@ -34,6 +34,7 @@ This repo ships a single-host production stack in `compose.production.yml` with:
 
 - `https://hippoject.<domain>` → frontend
 - `https://hippoject-api.<domain>` → backend
+- `https://hippo-api.<domain>` → Hippo AI backend
 - `https://auth.<domain>` → Keycloak
 - `https://monitoring.<domain>` → Grafana (Prometheus metrics + Loki logs)
 - `postgres://<host>:5432` → PostgreSQL (publicly exposed if you publish port 5432)

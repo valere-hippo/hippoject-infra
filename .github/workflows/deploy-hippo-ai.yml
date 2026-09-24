@@ -78,10 +78,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           HIPPO_API_KEY: ${{ secrets.HIPPO_API_KEY }}
-          HIPPO_API_URL: ${{ secrets.HIPPO_API_URL }}
+          HIPPO_AI_BASE_URL: ${{ secrets.HIPPO_AI_BASE_URL || secrets.HIPPO_API_URL }}
           HIPPO_EMBEDDING_KEY: ${{ secrets.HIPPO_EMBEDDING_KEY }}
           HIPPO_EMBEDDING_URL: ${{ secrets.HIPPO_EMBEDDING_URL }}
-          HIPPO_MODEL: ${{ secrets.HIPPO_MODEL }}
+          HIPPO_AI_MODEL: ${{ secrets.HIPPO_AI_MODEL || secrets.HIPPO_MODEL }}
           HIPPO_RESPONSE_MAX_TOKENS: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS }}
           HIPPO_RESPONSE_MAX_TOKENS_LONG: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS_LONG }}
           HIPPO_S3_BUCKET_NAME: ${{ secrets.HIPPO_S3_BUCKET_NAME }}
@@ -133,9 +133,9 @@ jobs:
           jwt_secret_key=${JWT_SECRET_KEY:-change_this_to_a_long_random_secret}
           jwt_algorithm=${JWT_ALGORITHM:-HS256}
           access_token_expire_minutes=${ACCESS_TOKEN_EXPIRE_MINUTES:-5256000}
-          hippo_api_url=${HIPPO_API_URL:-https://api.hipposideros-cloud.de}
+          hippo_api_url=${HIPPO_AI_BASE_URL:-${HIPPO_API_URL:-https://ai.hipposideros-cloud.de}}
           hippo_api_key=${HIPPO_API_KEY:-}
-          hippo_model=${HIPPO_MODEL:-hippo-ai}
+          hippo_model=${HIPPO_AI_MODEL:-${HIPPO_MODEL:-/root/autodl-tmp/hippo-ai-v2/models/Qwen3-Omni-30B-A3B-Instruct}}
           hippo_embedding_url=${HIPPO_EMBEDDING_URL:-}
           hippo_embedding_key=${HIPPO_EMBEDDING_KEY:-}
           hippo_response_max_tokens=${HIPPO_RESPONSE_MAX_TOKENS:-4096}

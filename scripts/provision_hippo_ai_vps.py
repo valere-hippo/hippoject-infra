@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from textwrap import indent
 from typing import Any
+import subprocess
 
 HCLOUD_API_ROOT = "https://api.hetzner.cloud/v1"
 CLOUDFLARE_API_ROOT = "https://api.cloudflare.com/client/v4"
@@ -134,6 +135,47 @@ def upsert_cloudflare_a_record(token: str, zone_id: str, record_name: str, ip_ad
     return request_json(CLOUDFLARE_API_ROOT, "POST", f"/zones/{zone_id}/dns_records", "Authorization", f"Bearer {token}", body)
 
 
+def run_ssh_command(private_key_path: str, host: str, command: str) -> str:
+    result = subprocess.run(
+        [
+            "ssh",
+            "-i",
+            private_key_path,
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            f"root@{host}",
+            command,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0:
+        raise RuntimeError(output.strip() or f"ssh command failed with exit code {result.returncode}")
+    return output.strip()
+
+
+def collect_remote_diagnostics(private_key_path: str, host: str) -> None:
+    commands = [
+        "uname -a",
+        "docker ps -a",
+        "cd /opt/hippo-ai && docker compose -f docker-compose.yml ps",
+        "cd /opt/hippo-ai && docker compose -f docker-compose.yml logs --no-color --tail=200 api postgres redis",
+    ]
+    print(f"\n### Remote diagnostics for {host}")
+    for cmd in commands:
+        print(f"\n$ {cmd}")
+        try:
+            output = run_ssh_command(private_key_path, host, cmd)
+            print(output)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[diagnostic failed] {exc}")
+
+
 def build_compose(owner: str) -> str:
     return f"""services:
   api:
@@ -243,6 +285,13 @@ def main() -> int:
     except ValueError:
         fail(f"Invalid DNS TTL: {dns_ttl_raw}")
 
+    debug_private_key_path = env("DEBUG_SSH_PRIVATE_KEY_PATH")
+    debug_public_key_path = env("DEBUG_SSH_PUBLIC_KEY_PATH")
+    debug_ssh_public_key = ""
+    if debug_public_key_path:
+        with open(debug_public_key_path, "r", encoding="utf-8") as fh:
+            debug_ssh_public_key = fh.read().strip()
+
     if not hcloud_token:
         fail("HCLOUD_TOKEN is missing.")
     if not cloudflare_token:
@@ -279,6 +328,9 @@ def main() -> int:
     force_recreate = env("INPUT_FORCE_RECREATE").lower() in {"1", "true", "yes", "on"}
 
     ssh_key_id = upsert_hcloud_ssh_key(hcloud_token, "hippo-ai-bootstrap", ssh_public_key)
+    debug_ssh_key_id = None
+    if debug_ssh_public_key:
+        debug_ssh_key_id = upsert_hcloud_ssh_key(hcloud_token, f"hippo-ai-debug-{env('GITHUB_RUN_ID') or 'manual'}", debug_ssh_public_key)
     existing_server = find_hcloud_server(hcloud_token, server_name)
     if existing_server is not None and not force_recreate:
         fail(
@@ -316,7 +368,7 @@ def main() -> int:
         "image": image,
         "location": location,
         "user_data": cloud_init,
-        "ssh_keys": [ssh_key_id],
+        "ssh_keys": [ssh_key_id] + ([debug_ssh_key_id] if debug_ssh_key_id is not None else []),
     }
 
     created: dict = {}
@@ -348,8 +400,13 @@ def main() -> int:
 
     upsert_cloudflare_a_record(cloudflare_token, cloudflare_zone_id, public_hostname, str(ipv4), ttl=dns_ttl)
 
-    ip_health = wait_for_health(f"http://{ipv4}")
-    public_health = wait_for_health(f"http://{public_hostname}")
+    try:
+        ip_health = wait_for_health(f"http://{ipv4}")
+        public_health = wait_for_health(f"http://{public_hostname}")
+    except SystemExit:
+        if debug_private_key_path:
+            collect_remote_diagnostics(debug_private_key_path, str(ipv4))
+        raise
 
     created_label = "Reused existing Hetzner server" if existing_server is not None else "Created Hetzner server"
     print(created_label)

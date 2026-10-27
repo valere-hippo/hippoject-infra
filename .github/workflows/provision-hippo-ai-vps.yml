@@ -70,6 +70,8 @@ jobs:
       PCLOUD_ACCESS_TOKEN: ${{ secrets.PCLOUD_ACCESS_TOKEN }}
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      DEBUG_SSH_PRIVATE_KEY_PATH: /tmp/hippo-ai-debug-key
+      DEBUG_SSH_PUBLIC_KEY_PATH: /tmp/hippo-ai-debug-key.pub
       INPUT_PROVIDER: ${{ inputs.provider }}
       INPUT_API_KEY: ${{ inputs.api_key }}
       INPUT_SERVER_NAME: ${{ inputs.server_name }}
@@ -80,6 +82,12 @@ jobs:
       INPUT_DNS_TTL: ${{ inputs.dns_ttl }}
       INPUT_FORCE_RECREATE: ${{ inputs.force_recreate }}
     steps:
+      - name: Generate ephemeral SSH key for diagnostics
+        run: |
+          ssh-keygen -t ed25519 -f /tmp/hippo-ai-debug-key -N "" -C "hippo-ai-debug-${{ github.run_id }}"
+          echo "DEBUG_SSH_PRIVATE_KEY_PATH=/tmp/hippo-ai-debug-key" >> "$GITHUB_ENV"
+          echo "DEBUG_SSH_PUBLIC_KEY_PATH=/tmp/hippo-ai-debug-key.pub" >> "$GITHUB_ENV"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 

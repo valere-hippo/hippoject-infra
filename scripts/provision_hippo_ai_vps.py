@@ -162,9 +162,14 @@ def run_ssh_command(private_key_path: str, host: str, command: str) -> str:
 def collect_remote_diagnostics(private_key_path: str, host: str) -> None:
     commands = [
         "uname -a",
+        "docker --version",
+        "docker compose version",
+        "systemctl status docker --no-pager -l",
+        "cat /var/log/cloud-init-output.log | tail -n 200",
+        "cat /var/log/cloud-init.log | tail -n 200",
         "docker ps -a",
-        "cd /opt/hippo-ai && docker compose -f docker-compose.yml ps",
-        "cd /opt/hippo-ai && docker compose -f docker-compose.yml logs --no-color --tail=200 api postgres redis",
+        "cd /opt/hippo-ai && docker compose ps",
+        "cd /opt/hippo-ai && docker compose logs --no-color --tail=200 api postgres redis",
     ]
     print(f"\n### Remote diagnostics for {host}")
     for cmd in commands:

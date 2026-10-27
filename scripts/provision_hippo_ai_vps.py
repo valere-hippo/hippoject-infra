@@ -279,6 +279,10 @@ def main() -> int:
 
     ssh_key_id = upsert_hcloud_ssh_key(hcloud_token, "hippo-ai-bootstrap", ssh_public_key)
     existing_server = find_hcloud_server(hcloud_token, server_name)
+    if existing_server is not None and not force_recreate:
+        fail(
+            f"Hetzner server '{server_name}' already exists. Set force_recreate=true to recreate it, or delete the existing server first."
+        )
     if existing_server is not None and force_recreate:
         existing_server_id = existing_server.get("id")
         if isinstance(existing_server_id, int):

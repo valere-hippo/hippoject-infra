@@ -157,7 +157,7 @@ volumes:
 """
 
 
-def build_cloud_init(env_lines: list[str], compose: str) -> str:
+def build_cloud_init(env_lines: list[str], compose: str, ghcr_username: str, ghcr_token: str) -> str:
     return f"""#cloud-config
 package_update: true
 package_upgrade: true
@@ -184,6 +184,7 @@ write_files:
 
 runcmd:
   - systemctl enable --now docker
+  - [ bash, -lc, 'echo "{ghcr_token}" | docker login ghcr.io -u "{ghcr_username}" --password-stdin' ]
   - [ bash, -lc, 'cd /opt/hippo-ai && docker compose pull' ]
   - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d' ]
 """
@@ -196,6 +197,8 @@ def main() -> int:
     ssh_public_key = env("SSH_PUBLIC_KEY")
     hippo_ai_base_url = env("HIPPO_AI_BASE_URL")
     hippo_ai_model = env("HIPPO_AI_MODEL")
+    ghcr_username = env("GHCR_USERNAME")
+    ghcr_token = env("GHCR_TOKEN")
 
     provider = env("INPUT_PROVIDER").lower()
     api_key = env("INPUT_API_KEY")
@@ -227,8 +230,14 @@ def main() -> int:
         fail("HIPPO_AI_BASE_URL is missing.")
     if not hippo_ai_model:
         fail("HIPPO_AI_MODEL is missing.")
+    if not ghcr_username:
+        fail("GHCR_USERNAME is missing.")
+    if not ghcr_token:
+        fail("GHCR_TOKEN is missing.")
 
     mask(api_key)
+    mask(ghcr_username)
+    mask(ghcr_token)
     postgres_password = secrets.token_urlsafe(32)
     jwt_secret = secrets.token_urlsafe(48)
     mask(postgres_password)
@@ -256,7 +265,7 @@ def main() -> int:
     ]
 
     compose = build_compose(owner)
-    cloud_init = build_cloud_init(env_lines, compose)
+    cloud_init = build_cloud_init(env_lines, compose, ghcr_username, ghcr_token)
 
     payload: dict[str, object] = {
         "name": server_name,

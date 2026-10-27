@@ -63,6 +63,8 @@ jobs:
       HIPPO_AI_BASE_URL: ${{ secrets.HIPPO_AI_BASE_URL }}
       HIPPO_AI_MODEL: ${{ secrets.HIPPO_AI_MODEL }}
       PCLOUD_ACCESS_TOKEN: ${{ secrets.PCLOUD_ACCESS_TOKEN }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       INPUT_PROVIDER: ${{ inputs.provider }}
       INPUT_API_KEY: ${{ inputs.api_key }}
       INPUT_SERVER_NAME: ${{ inputs.server_name }}

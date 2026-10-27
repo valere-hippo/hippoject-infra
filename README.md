@@ -151,6 +151,8 @@ Before using it, configure these repository secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ZONE_ID`
 - `SSH_PUBLIC_KEY`
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
 - `HIPPO_AI_BASE_URL`
 - `HIPPO_AI_MODEL`
 - `PCLOUD_ACCESS_TOKEN` if you want the backend to keep pCloud access enabled

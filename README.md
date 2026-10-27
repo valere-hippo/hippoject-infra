@@ -157,7 +157,7 @@ Before using it, configure these repository secrets:
 - `HIPPO_AI_MODEL`
 - `PCLOUD_ACCESS_TOKEN` if you want the backend to keep pCloud access enabled
 
-The workflow accepts the provider choice (`openai` or `claude`) plus the API key as dispatch input.
+The workflow accepts the provider choice (`openai` or `claude`) plus the API key as dispatch input. Use `force_recreate=true` if you want to delete an existing server with the same name and provision a fresh one.
 
 
 The repo also includes a manual Terraform workflow:

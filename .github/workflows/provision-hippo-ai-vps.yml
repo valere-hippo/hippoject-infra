@@ -44,6 +44,11 @@ on:
         required: false
         type: string
         default: "300"
+      force_recreate:
+        description: "Delete an existing server with the same name before provisioning"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -73,6 +78,7 @@ jobs:
       INPUT_IMAGE: ${{ inputs.image }}
       INPUT_PUBLIC_HOSTNAME: ${{ inputs.public_hostname }}
       INPUT_DNS_TTL: ${{ inputs.dns_ttl }}
+      INPUT_FORCE_RECREATE: ${{ inputs.force_recreate }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

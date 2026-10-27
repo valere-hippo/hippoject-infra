@@ -109,6 +109,20 @@ def find_hcloud_server(token: str, server_name: str) -> dict[str, Any] | None:
     return next((server for server in servers if server.get("name") == server_name), None)
 
 
+def delete_hcloud_server(token: str, server_id: int) -> None:
+    request_json(HCLOUD_API_ROOT, "DELETE", f"/servers/{server_id}", "Authorization", f"Bearer {token}")
+
+
+def wait_for_server_absence(token: str, server_name: str, timeout_seconds: int = 600, interval_seconds: int = 10) -> None:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        if find_hcloud_server(token, server_name) is None:
+            return
+        print(f"Waiting for existing server '{server_name}' to disappear before recreate ...")
+        time.sleep(interval_seconds)
+    fail(f"Existing server '{server_name}' still exists after {timeout_seconds}s")
+
+
 def upsert_cloudflare_a_record(token: str, zone_id: str, record_name: str, ip_address: str, ttl: int = 300) -> dict:
     q = urllib.parse.urlencode({"name": record_name, "type": "A"})
     payload = request_json(CLOUDFLARE_API_ROOT, "GET", f"/zones/{zone_id}/dns_records?{q}", "Authorization", f"Bearer {token}")
@@ -135,6 +149,14 @@ def build_compose(owner: str) -> str:
         condition: service_started
     ports:
       - \"80:8000\"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import json, urllib.request, sys; data = json.load(urllib.request.urlopen('http://127.0.0.1:8000/health')); raise SystemExit(0 if data.get('status') == 'ok' else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   postgres:
     image: postgres:17
@@ -192,7 +214,7 @@ runcmd:
   - systemctl enable --now docker
   - [ bash, -lc, 'echo "{ghcr_token}" | docker login ghcr.io -u "{ghcr_username}" --password-stdin' ]
   - [ bash, -lc, 'cd /opt/hippo-ai && docker compose pull' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d' ]
+  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d --wait --wait-timeout 1800' ]
 """
 
 
@@ -253,8 +275,17 @@ def main() -> int:
     if not owner:
         fail("GITHUB_REPOSITORY_OWNER is missing.")
 
+    force_recreate = env("INPUT_FORCE_RECREATE").lower() in {"1", "true", "yes", "on"}
+
     ssh_key_id = upsert_hcloud_ssh_key(hcloud_token, "hippo-ai-bootstrap", ssh_public_key)
     existing_server = find_hcloud_server(hcloud_token, server_name)
+    if existing_server is not None and force_recreate:
+        existing_server_id = existing_server.get("id")
+        if isinstance(existing_server_id, int):
+            print(f"Deleting existing server '{server_name}' before recreate ...")
+            delete_hcloud_server(hcloud_token, existing_server_id)
+            wait_for_server_absence(hcloud_token, server_name)
+            existing_server = None
     env_lines = [
         "APP_ENV=production",
         "POSTGRES_DB=hippo_ai",

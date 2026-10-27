@@ -39,7 +39,7 @@ def request_json(base_url: str, method: str, path: str, token_header: str, token
         return json.load(resp)
 
 
-def wait_for_health(base_url: str, timeout_seconds: int = 900, interval_seconds: int = 10) -> dict:
+def wait_for_health(base_url: str, timeout_seconds: int = 3600, interval_seconds: int = 15) -> dict:
     deadline = time.time() + timeout_seconds
     health_url = f"{base_url.rstrip('/')}/health"
     last_error: str | None = None
@@ -214,7 +214,8 @@ runcmd:
   - systemctl enable --now docker
   - [ bash, -lc, 'echo "{ghcr_token}" | docker login ghcr.io -u "{ghcr_username}" --password-stdin' ]
   - [ bash, -lc, 'cd /opt/hippo-ai && docker compose pull' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d --wait --wait-timeout 1800' ]
+  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d --remove-orphans' ]
+  - [ bash, -lc, 'for i in $(seq 1 180); do curl -fsS http://127.0.0.1/health && exit 0; sleep 10; done; echo "Hippo AI health check timed out" >&2; docker compose -f /opt/hippo-ai/docker-compose.yml ps >&2; exit 1' ]
 """
 
 

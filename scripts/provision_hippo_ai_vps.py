@@ -61,17 +61,42 @@ def wait_for_health(base_url: str, timeout_seconds: int = 900, interval_seconds:
 def upsert_hcloud_ssh_key(token: str, key_name: str, public_key: str) -> int:
     payload = request_json(HCLOUD_API_ROOT, "GET", "/ssh_keys", "Authorization", f"Bearer {token}")
     keys = payload.get("ssh_keys", []) if isinstance(payload, dict) else []
-    existing = next((item for item in keys if item.get("name") == key_name), None)
+    existing = next(
+        (
+            item
+            for item in keys
+            if item.get("name") == key_name or item.get("public_key") == public_key
+        ),
+        None,
+    )
     if existing and existing.get("id"):
         return int(existing["id"])
-    created = request_json(
-        HCLOUD_API_ROOT,
-        "POST",
-        "/ssh_keys",
-        "Authorization",
-        f"Bearer {token}",
-        {"name": key_name, "public_key": public_key},
-    )
+    created: dict[str, Any] = {}
+    try:
+        created = request_json(
+            HCLOUD_API_ROOT,
+            "POST",
+            "/ssh_keys",
+            "Authorization",
+            f"Bearer {token}",
+            {"name": key_name, "public_key": public_key},
+        )
+    except urllib.error.HTTPError as exc:
+        if exc.code == 409:
+            payload = request_json(HCLOUD_API_ROOT, "GET", "/ssh_keys", "Authorization", f"Bearer {token}")
+            keys = payload.get("ssh_keys", []) if isinstance(payload, dict) else []
+            existing = next(
+                (
+                    item
+                    for item in keys
+                    if item.get("name") == key_name or item.get("public_key") == public_key
+                ),
+                None,
+            )
+            if existing and existing.get("id"):
+                return int(existing["id"])
+        body = exc.read().decode("utf-8", errors="replace")
+        fail(f"Hetzner SSH key creation failed ({exc.code}): {body}")
     ssh_key = created.get("ssh_key", {}) if isinstance(created, dict) else {}
     if not ssh_key.get("id"):
         fail("Hetzner SSH key creation failed.")

@@ -72,10 +72,11 @@ For `hippoject-infra`:
 - `DEPLOY_PATH`
 - `GHCR_USERNAME`
 - `GHCR_TOKEN`
-- `HCLOUD_TOKEN` (for Terraform workflow)
-- `CLOUDFLARE_API_TOKEN` (for Terraform workflow)
-- `CLOUDFLARE_ZONE_ID` (for Terraform workflow)
-- `SSH_PUBLIC_KEY` (for Terraform workflow)
+- `HCLOUD_TOKEN` (for Terraform workflow and Hippo AI VPS provisioning)
+- `CLOUDFLARE_API_TOKEN` (for Terraform workflow and Hippo AI VPS provisioning)
+- `CLOUDFLARE_ZONE_ID` (for Terraform workflow and Hippo AI VPS provisioning)
+- `SSH_PUBLIC_KEY` (for Terraform workflow and Hippo AI VPS provisioning)
+- `HIPPO_AI_BASE_URL` and `HIPPO_AI_MODEL` (for Hippo AI VPS provisioning)
 
 ## Manual production startup
 
@@ -134,9 +135,28 @@ terraform apply
 terraform output server_ipv4
 ```
 
-## GitHub Actions Terraform workflow
+## Hippo AI VPS provisioning
 
-This repo now includes a manual workflow:
+This repo also includes a manual workflow:
+
+- workflow: `provision-hippo-ai-vps`
+
+It provisions the Hippo AI VPS on Hetzner, writes the backend runtime env, updates the Cloudflare A record for `hippo-api.hipposideros-cloud.de` by default, waits for `/health`, and exposes the backend URL as a workflow output.
+
+Before using it, configure these repository secrets:
+
+- `HCLOUD_TOKEN`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ZONE_ID`
+- `SSH_PUBLIC_KEY`
+- `HIPPO_AI_BASE_URL`
+- `HIPPO_AI_MODEL`
+- `PCLOUD_ACCESS_TOKEN` if you want the backend to keep pCloud access enabled
+
+The workflow accepts the provider choice (`openai` or `claude`) plus the API key as dispatch input.
+
+
+The repo also includes a manual Terraform workflow:
 
 - workflow: `hippoject-terraform`
 

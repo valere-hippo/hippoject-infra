@@ -23,12 +23,12 @@ on:
         description: "Hetzner server type"
         required: false
         type: string
-        default: "cpx31"
+        default: "cpx62"
       location:
         description: "Hetzner location"
         required: false
         type: string
-        default: "nbg1"
+        default: "fsn1"
       image:
         description: "Hetzner image"
         required: false

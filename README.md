@@ -143,6 +143,8 @@ This repo also includes a manual workflow:
 
 It provisions the Hippo AI VPS on Hetzner, writes the backend runtime env, updates the Cloudflare A record for `hippo-api.hipposideros-cloud.de` by default, waits for `/health`, and exposes the backend URL as a workflow output.
 
+Default recommended server settings are `cpx62` in `fsn1`.
+
 Before using it, configure these repository secrets:
 
 - `HCLOUD_TOKEN`

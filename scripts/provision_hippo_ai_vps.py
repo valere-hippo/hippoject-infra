@@ -103,6 +103,12 @@ def upsert_hcloud_ssh_key(token: str, key_name: str, public_key: str) -> int:
     return int(ssh_key["id"])
 
 
+def find_hcloud_server(token: str, server_name: str) -> dict[str, Any] | None:
+    payload = request_json(HCLOUD_API_ROOT, "GET", "/servers", "Authorization", f"Bearer {token}")
+    servers = payload.get("servers", []) if isinstance(payload, dict) else []
+    return next((server for server in servers if server.get("name") == server_name), None)
+
+
 def upsert_cloudflare_a_record(token: str, zone_id: str, record_name: str, ip_address: str, ttl: int = 300) -> dict:
     q = urllib.parse.urlencode({"name": record_name, "type": "A"})
     payload = request_json(CLOUDFLARE_API_ROOT, "GET", f"/zones/{zone_id}/dns_records?{q}", "Authorization", f"Bearer {token}")
@@ -248,6 +254,7 @@ def main() -> int:
         fail("GITHUB_REPOSITORY_OWNER is missing.")
 
     ssh_key_id = upsert_hcloud_ssh_key(hcloud_token, "hippo-ai-bootstrap", ssh_public_key)
+    existing_server = find_hcloud_server(hcloud_token, server_name)
     env_lines = [
         "APP_ENV=production",
         "POSTGRES_DB=hippo_ai",
@@ -277,20 +284,26 @@ def main() -> int:
     }
 
     created: dict = {}
-    try:
-        created = request_json(
-            HCLOUD_API_ROOT,
-            "POST",
-            "/servers",
-            "Authorization",
-            f"Bearer {hcloud_token}",
-            payload,
-        )
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        fail(f"Hetzner server creation failed ({exc.code}): {body}")
+    if existing_server is None:
+        try:
+            created = request_json(
+                HCLOUD_API_ROOT,
+                "POST",
+                "/servers",
+                "Authorization",
+                f"Bearer {hcloud_token}",
+                payload,
+            )
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if exc.code == 409 and "server name is already used" in body:
+                existing_server = find_hcloud_server(hcloud_token, server_name)
+                if existing_server is None:
+                    fail(f"Hetzner server creation failed ({exc.code}): {body}")
+            else:
+                fail(f"Hetzner server creation failed ({exc.code}): {body}")
 
-    server = created.get("server", {}) if isinstance(created, dict) else {}
+    server = existing_server or (created.get("server", {}) if isinstance(created, dict) else {})
     public_net = server.get("public_net", {}) or {}
     ipv4 = (public_net.get("ipv4", {}) or {}).get("ip")
     server_id = server.get("id")
@@ -302,7 +315,8 @@ def main() -> int:
     ip_health = wait_for_health(f"http://{ipv4}")
     public_health = wait_for_health(f"http://{public_hostname}")
 
-    print("Created Hetzner server")
+    created_label = "Reused existing Hetzner server" if existing_server is not None else "Created Hetzner server"
+    print(created_label)
     print(f"- id: {server_id}")
     print(f"- name: {server_name}")
     print(f"- ipv4: {ipv4}")

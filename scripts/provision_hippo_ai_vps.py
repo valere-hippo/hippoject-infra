@@ -163,13 +163,13 @@ def collect_remote_diagnostics(private_key_path: str, host: str) -> None:
     commands = [
         "uname -a",
         "docker --version",
-        "docker compose version",
+        "docker-compose version",
         "systemctl status docker --no-pager -l",
         "cat /var/log/cloud-init-output.log | tail -n 200",
         "cat /var/log/cloud-init.log | tail -n 200",
         "docker ps -a",
-        "cd /opt/hippo-ai && docker compose ps",
-        "cd /opt/hippo-ai && docker compose logs --no-color --tail=200 api postgres redis",
+        "cd /opt/hippo-ai && docker-compose ps",
+        "cd /opt/hippo-ai && docker-compose logs --no-color --tail=200 api postgres redis",
     ]
     print(f"\n### Remote diagnostics for {host}")
     for cmd in commands:
@@ -242,7 +242,7 @@ packages:
   - git
   - jq
   - docker.io
-  - docker-compose-plugin
+  - docker-compose
 
 bootcmd:
   - mkdir -p /opt/hippo-ai
@@ -260,9 +260,9 @@ write_files:
 runcmd:
   - systemctl enable --now docker
   - [ bash, -lc, 'echo "{ghcr_token}" | docker login ghcr.io -u "{ghcr_username}" --password-stdin' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose pull' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker compose up -d --remove-orphans' ]
-  - [ bash, -lc, 'for i in $(seq 1 180); do curl -fsS http://127.0.0.1/health && exit 0; sleep 10; done; echo "Hippo AI health check timed out" >&2; docker compose -f /opt/hippo-ai/docker-compose.yml ps >&2; exit 1' ]
+  - [ bash, -lc, 'cd /opt/hippo-ai && docker-compose pull' ]
+  - [ bash, -lc, 'cd /opt/hippo-ai && docker-compose up -d --remove-orphans' ]
+  - [ bash, -lc, 'for i in $(seq 1 180); do curl -fsS http://127.0.0.1/health && exit 0; sleep 10; done; echo "Hippo AI health check timed out" >&2; docker-compose -f /opt/hippo-ai/docker-compose.yml ps >&2; exit 1' ]
 """
 
 

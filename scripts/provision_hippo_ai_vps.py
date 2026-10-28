@@ -163,13 +163,13 @@ def collect_remote_diagnostics(private_key_path: str, host: str) -> None:
     commands = [
         "uname -a",
         "docker --version",
-        "docker-compose version",
         "systemctl status docker --no-pager -l",
         "cat /var/log/cloud-init-output.log | tail -n 200",
         "cat /var/log/cloud-init.log | tail -n 200",
         "docker ps -a",
-        "cd /opt/hippo-ai && docker-compose ps",
-        "cd /opt/hippo-ai && docker-compose logs --no-color --tail=200 api postgres redis",
+        "docker logs api --tail 200",
+        "docker logs postgres --tail 200",
+        "docker logs redis --tail 200",
     ]
     print(f"\n### Remote diagnostics for {host}")
     for cmd in commands:
@@ -233,6 +233,62 @@ volumes:
 
 
 def build_cloud_init(env_lines: list[str], compose: str, ghcr_username: str, ghcr_token: str) -> str:
+    bootstrap_script = f"""#!/usr/bin/env bash
+set -euo pipefail
+
+cd /opt/hippo-ai
+
+docker network inspect hippo-ai-net >/dev/null 2>&1 || docker network create hippo-ai-net
+docker volume create hippo_ai_postgres_data >/dev/null
+docker volume create hippo_ai_redis_data >/dev/null
+docker volume create hippo_ai_uploads >/dev/null
+
+docker rm -f api postgres redis >/dev/null 2>&1 || true
+
+docker run -d \
+  --name redis \
+  --network hippo-ai-net \
+  --restart unless-stopped \
+  -v hippo_ai_redis_data:/data \
+  redis:8-alpine
+
+docker run -d \
+  --name postgres \
+  --network hippo-ai-net \
+  --restart unless-stopped \
+  --env-file /opt/hippo-ai/.env.production \
+  -v hippo_ai_postgres_data:/var/lib/postgresql/data \
+  postgres:17
+
+for i in $(seq 1 120); do
+  if docker exec postgres pg_isready -U hippo -d hippo_ai >/dev/null 2>&1; then
+    break
+  fi
+  sleep 5
+done
+
+docker run -d \
+  --name api \
+  --network hippo-ai-net \
+  --restart unless-stopped \
+  --env-file /opt/hippo-ai/.env.production \
+  -p 80:8000 \
+  -v hippo_ai_uploads:/app/uploads \
+  ghcr.io/{ghcr_username}/hippo-ai-api:latest
+
+for i in $(seq 1 180); do
+  if curl -fsS http://127.0.0.1/health >/dev/null; then
+    exit 0
+  fi
+  sleep 10
+done
+
+echo "Hippo AI health check timed out" >&2
+docker logs api --tail 200 >&2 || true
+docker logs postgres --tail 200 >&2 || true
+docker logs redis --tail 200 >&2 || true
+exit 1
+"""
     return f"""#cloud-config
 package_update: true
 package_upgrade: true
@@ -242,7 +298,6 @@ packages:
   - git
   - jq
   - docker.io
-  - docker-compose
 
 bootcmd:
   - mkdir -p /opt/hippo-ai
@@ -252,17 +307,15 @@ write_files:
     permissions: '0600'
     content: |
 {indent(os.linesep.join(env_lines), '      ')}
-  - path: /opt/hippo-ai/docker-compose.yml
-    permissions: '0644'
+  - path: /opt/hippo-ai/bootstrap.sh
+    permissions: '0700'
     content: |
-{indent(compose.rstrip(), '      ')}
+{indent(bootstrap_script.rstrip(), '      ')}
 
 runcmd:
   - systemctl enable --now docker
   - [ bash, -lc, 'echo "{ghcr_token}" | docker login ghcr.io -u "{ghcr_username}" --password-stdin' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker-compose pull' ]
-  - [ bash, -lc, 'cd /opt/hippo-ai && docker-compose up -d --remove-orphans' ]
-  - [ bash, -lc, 'for i in $(seq 1 180); do curl -fsS http://127.0.0.1/health && exit 0; sleep 10; done; echo "Hippo AI health check timed out" >&2; docker-compose -f /opt/hippo-ai/docker-compose.yml ps >&2; exit 1' ]
+  - [ bash, -lc, '/opt/hippo-ai/bootstrap.sh' ]
 """
 
 

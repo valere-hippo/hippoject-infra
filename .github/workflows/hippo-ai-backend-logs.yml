@@ -1,0 +1,58 @@
+name: hippo-ai-backend-logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      container_name:
+        description: 'Docker container name to inspect'
+        required: false
+        default: 'hippo-ai-api'
+        type: string
+      tail_lines:
+        description: 'Number of log lines to display'
+        required: false
+        default: '200'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hippo-ai-backend-logs
+  cancel-in-progress: true
+
+jobs:
+  logs:
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+
+    steps:
+      - name: Show latest backend logs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          container_name="${{ inputs.container_name || 'hippo-ai-api' }}"
+          tail_lines="${{ inputs.tail_lines || '200' }}"
+
+          if ! [[ "$tail_lines" =~ ^[0-9]+$ ]]; then
+            echo "tail_lines must be a positive integer" >&2
+            exit 1
+          fi
+
+          echo "=== Docker containers on host ==="
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          echo
+          echo "=== Backend log target ==="
+          echo "container_name=$container_name"
+          echo "tail_lines=$tail_lines"
+          echo
+
+          if ! docker inspect "$container_name" >/dev/null 2>&1; then
+            echo "Container '$container_name' was not found on this host." >&2
+            echo "Available containers:" >&2
+            docker ps -a --format '{{.Names}}' >&2
+            exit 1
+          fi
+
+          echo "=== Last ${tail_lines} lines from ${container_name} ==="
+          docker logs "$container_name" --timestamps --tail "$tail_lines"

@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   logs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Validate inputs
@@ -88,11 +88,11 @@ jobs:
             -p "$backend_port" \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$backend_user@$backend_host" 'bash -s' <<'REMOTE'
+            "$backend_user@$backend_host" "CONTAINER_NAME=$container_name TAIL_LINES=$tail_lines bash -s" <<'REMOTE'
           set -euo pipefail
 
-          container_name='${container_name}'
-          tail_lines='${tail_lines}'
+          container_name="${CONTAINER_NAME:-hippo-ai-api}"
+          tail_lines="${TAIL_LINES:-200}"
 
           if docker ps >/dev/null 2>&1; then
             DOCKER=docker

@@ -3,21 +3,6 @@ name: hippo-ai-backend-logs
 on:
   workflow_dispatch:
     inputs:
-      backend_host:
-        description: 'Production host to inspect'
-        required: false
-        default: '46.225.179.25'
-        type: string
-      backend_user:
-        description: 'SSH user on the production host'
-        required: false
-        default: 'ansible'
-        type: string
-      backend_port:
-        description: 'SSH port'
-        required: false
-        default: '22'
-        type: string
       container_name:
         description: 'Docker container name to inspect'
         required: false
@@ -38,77 +23,39 @@ concurrency:
 
 jobs:
   logs:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, hippoject-prod]
+    timeout-minutes: 15
 
     steps:
-      - name: Validate inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          backend_port='${{ inputs.backend_port || '22' }}'
-          tail_lines='${{ inputs.tail_lines || '200' }}'
-          if ! [[ "$backend_port" =~ ^[0-9]+$ ]]; then
-            echo "backend_port must be a positive integer" >&2
-            exit 1
-          fi
-          if ! [[ "$tail_lines" =~ ^[0-9]+$ ]]; then
-            echo "tail_lines must be a positive integer" >&2
-            exit 1
-          fi
-
-      - name: Prepare SSH key
-        shell: bash
-        env:
-          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${PROD_SSH_PRIVATE_KEY:-}" ]; then
-            echo "Missing repository secret PROD_SSH_PRIVATE_KEY." >&2
-            echo "Add the private key that can SSH to the production host as ansible." >&2
-            exit 1
-          fi
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p '${{ inputs.backend_port || '22' }}' -H '${{ inputs.backend_host || '46.225.179.25' }}' >> ~/.ssh/known_hosts
-
       - name: Show latest backend logs
         shell: bash
         run: |
           set -euo pipefail
 
-          backend_host='${{ inputs.backend_host || '46.225.179.25' }}'
-          backend_user='${{ inputs.backend_user || 'ansible' }}'
-          backend_port='${{ inputs.backend_port || '22' }}'
           container_name='${{ inputs.container_name || 'hippo-ai-api' }}'
           tail_lines='${{ inputs.tail_lines || '200' }}'
 
-          ssh -i ~/.ssh/id_ed25519 \
-            -p "$backend_port" \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$backend_user@$backend_host" "CONTAINER_NAME=$container_name TAIL_LINES=$tail_lines bash -s" <<'REMOTE'
-          set -euo pipefail
-
-          container_name="${CONTAINER_NAME:-hippo-ai-api}"
-          tail_lines="${TAIL_LINES:-200}"
+          if ! [[ "$tail_lines" =~ ^[0-9]+$ ]]; then
+            echo "tail_lines must be a positive integer" >&2
+            exit 1
+          fi
 
           if docker ps >/dev/null 2>&1; then
             DOCKER=docker
           elif sudo -n docker ps >/dev/null 2>&1; then
             DOCKER='sudo docker'
           else
-            echo "Docker is not accessible for this user." >&2
+            echo "Docker is not accessible for this runner user." >&2
+            echo "Who am I?" >&2
+            id >&2 || true
+            echo "Groups:" >&2
+            groups >&2 || true
             exit 1
           fi
-
-          cd /opt/hippo-ai
 
           echo "=== Docker containers on host ==="
           $DOCKER ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
           echo
-
           echo "=== Backend log target ==="
           echo "container_name=$container_name"
           echo "tail_lines=$tail_lines"
@@ -123,4 +70,3 @@ jobs:
 
           echo "=== Last ${tail_lines} lines from ${container_name} ==="
           $DOCKER logs "$container_name" --timestamps --tail "$tail_lines"
-          REMOTE

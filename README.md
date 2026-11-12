@@ -155,6 +155,11 @@ Before using it, configure these repository secrets:
 - `GHCR_TOKEN`
 - `HIPPO_AI_BASE_URL`
 - `HIPPO_AI_MODEL`
+- `OPENAI_API_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` if OpenAI is used directly
+- `ANTHROPIC_API_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` or `CLAUDE_API_BASE_URL`, `CLAUDE_API_KEY`, `CLAUDE_MODEL` for Claude
+- `DEEPSEEK_API_BASE_URL`, `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`
+- `QWEN_API_BASE_URL`, `QWEN_API_KEY`, `QWEN_MODEL`
+- `TENCENT_API_BASE_URL`, `TENCENT_API_KEY`, `TENCENT_MODEL`
 - `PCLOUD_ACCESS_TOKEN` if you want the backend to keep pCloud access enabled
 
 The workflow accepts the provider choice (`openai` or `claude`) plus the API key as dispatch input. Use `force_recreate=true` if you want to delete an existing server with the same name and provision a fresh one.

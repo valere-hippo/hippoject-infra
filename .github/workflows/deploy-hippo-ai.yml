@@ -82,6 +82,21 @@ jobs:
           HIPPO_EMBEDDING_KEY: ${{ secrets.HIPPO_EMBEDDING_KEY }}
           HIPPO_EMBEDDING_URL: ${{ secrets.HIPPO_EMBEDDING_URL }}
           HIPPO_AI_MODEL: ${{ secrets.HIPPO_AI_MODEL || secrets.HIPPO_MODEL }}
+          OPENAI_API_BASE_URL: ${{ secrets.OPENAI_API_BASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          CLAUDE_API_BASE_URL: ${{ secrets.CLAUDE_API_BASE_URL || secrets.ANTHROPIC_API_URL }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY || secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ secrets.CLAUDE_MODEL || secrets.ANTHROPIC_MODEL }}
+          DEEPSEEK_API_BASE_URL: ${{ secrets.DEEPSEEK_API_BASE_URL || secrets.DEEPSEEK_API_URL }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+          QWEN_API_BASE_URL: ${{ secrets.QWEN_API_BASE_URL || secrets.QWEN_API_URL || secrets.ALIBABA_API_URL }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY || secrets.ALIBABA_API_KEY }}
+          QWEN_MODEL: ${{ secrets.QWEN_MODEL || secrets.ALIBABA_MODEL }}
+          TENCENT_API_BASE_URL: ${{ secrets.TENCENT_API_BASE_URL || secrets.TENCENT_API_URL }}
+          TENCENT_API_KEY: ${{ secrets.TENCENT_API_KEY }}
+          TENCENT_MODEL: ${{ secrets.TENCENT_MODEL }}
           HIPPO_RESPONSE_MAX_TOKENS: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS }}
           HIPPO_RESPONSE_MAX_TOKENS_LONG: ${{ secrets.HIPPO_RESPONSE_MAX_TOKENS_LONG }}
           HIPPO_S3_BUCKET_NAME: ${{ secrets.HIPPO_S3_BUCKET_NAME }}
@@ -136,6 +151,18 @@ jobs:
           hippo_api_url=${HIPPO_AI_BASE_URL:-${HIPPO_API_URL:-https://ai.hipposideros-cloud.de}}
           hippo_api_key=${HIPPO_API_KEY:-}
           hippo_model=${HIPPO_AI_MODEL:-${HIPPO_MODEL:-/root/autodl-tmp/hippo-ai-v2/models/Qwen3-Omni-30B-A3B-Instruct}}
+          claude_api_url=${CLAUDE_API_BASE_URL:-${ANTHROPIC_API_URL:-}}
+          claude_api_key=${CLAUDE_API_KEY:-${ANTHROPIC_API_KEY:-}}
+          claude_model=${CLAUDE_MODEL:-${ANTHROPIC_MODEL:-claude-3-5-sonnet}}
+          deepseek_api_url=${DEEPSEEK_API_BASE_URL:-${DEEPSEEK_API_URL:-}}
+          deepseek_api_key=${DEEPSEEK_API_KEY:-}
+          deepseek_model=${DEEPSEEK_MODEL:-deepseek-chat}
+          qwen_api_url=${QWEN_API_BASE_URL:-${QWEN_API_URL:-${ALIBABA_API_URL:-}}}
+          qwen_api_key=${QWEN_API_KEY:-${ALIBABA_API_KEY:-}}
+          qwen_model=${QWEN_MODEL:-${ALIBABA_MODEL:-qwen-plus}}
+          tencent_api_url=${TENCENT_API_BASE_URL:-${TENCENT_API_URL:-}}
+          tencent_api_key=${TENCENT_API_KEY:-}
+          tencent_model=${TENCENT_MODEL:-hunyuan-turbo}
           hippo_embedding_url=${HIPPO_EMBEDDING_URL:-}
           hippo_embedding_key=${HIPPO_EMBEDDING_KEY:-}
           hippo_response_max_tokens=${HIPPO_RESPONSE_MAX_TOKENS:-4096}
